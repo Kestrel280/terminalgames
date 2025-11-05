@@ -53,6 +53,7 @@ struct _game {
     int state;
     Player p1;
     Player p2;
+    Ball ball;
     int pauseCounter;
 };
 
@@ -64,8 +65,11 @@ void initPlayer(Player* player, int color, int x);
 /* Game logic */
 void playGame();
 void gameTick(Game* game);
+void gameHandleInput(Game* game);
 
 /* Drawing */
 void drawGame(Game game);
+void drawOverlay(const char* msg);
 void drawBorder();
 void drawPaddle(Paddle pad);
+void drawBall(Ball ball);
