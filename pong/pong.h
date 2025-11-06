@@ -19,7 +19,7 @@ typedef struct _ball Ball;
 typedef struct _game Game;
 typedef struct _player Player;
 
-const int screenW = 160;
+const int screenW = 80;
 const int screenH = 35;
 const uint64_t TICK_TIME_US = 100000;
 const int BORDER_THICKNESS = 2;
@@ -41,7 +41,8 @@ enum {
 enum {
     GAME_STATE_READY,
     GAME_STATE_PLAYING,
-    GAME_STATE_SCORED
+    GAME_STATE_SCORED,
+    GAME_STATE_GAMEOVER
 };
 
 struct _paddle {

@@ -93,6 +93,8 @@ void playGame() {
                 case GAME_STATE_SCORED:
                     if (--game.pauseCounter <= 0) { game.pauseCounter = READY_TICKS; game.state = GAME_STATE_READY; }
                     break;
+                case GAME_STATE_GAMEOVER:
+                    if (--game.pauseCounter <= 0) game.finished = true;
             }
         }
 
@@ -105,7 +107,6 @@ void playGame() {
 void score(Game* game, int player) {
     if (player == 1) game->p1.score++;
     else if (player == 2) game->p2.score++;
-    if ((game->p1.score > WIN_SCORE) || (game->p2.score > WIN_SCORE)) winGame(game, player);
     game->lastScore = player;
     game->state = GAME_STATE_SCORED;
     game->pauseCounter = SCORED_TICKS;
@@ -124,11 +125,12 @@ void score(Game* game, int player) {
     game->ball.subvy = 1 * BALL_SUBTICKS;
     game->ball.x = game->ball.subx / BALL_SUBTICKS;
     game->ball.y = game->ball.suby / BALL_SUBTICKS;
+    if ((game->p1.score >= WIN_SCORE) || (game->p2.score >= WIN_SCORE)) winGame(game, player);
     return;
 }
 
 void winGame(Game* game, int player) {
-    game->finished = true;
+    game->state = GAME_STATE_GAMEOVER;
 }
 
 void gameTick(Game* game) {
@@ -192,10 +194,10 @@ void gameHandleInput(Game* game) {
 
     while ((key = getch()) != ERR) {
         switch (key) {
-            case KEY_UP: game->p1.pad.vy -= 1; break;
-            case KEY_DOWN: game->p1.pad.vy += 1; break;
-            case KEY_RIGHT: game->p1.pad.vx += 1; break;
-            case KEY_LEFT: game->p1.pad.vx -= 1; break;
+            case KEY_UP: game->p1.pad.vy -= 2; break;
+            case KEY_DOWN: game->p1.pad.vy += 2; break;
+            case KEY_RIGHT: game->p1.pad.vx += 3; break;
+            case KEY_LEFT: game->p1.pad.vx -= 3; break;
         }
     }
 
@@ -211,9 +213,11 @@ void drawGame(Game game) {
     drawPaddle(game.p1.pad, game.frac);
     drawPaddle(game.p2.pad, game.frac);
     drawBall(game.ball, game.frac);
+    char buf[20];
     switch (game.state) {
         case GAME_STATE_READY: drawOverlay("READY"); break;
-        case GAME_STATE_SCORED: char buf[20]; sprintf(buf, "P%d SCORED", game.lastScore); buf[19] = '\x00'; drawOverlay(buf); break;
+        case GAME_STATE_SCORED: sprintf(buf, "P%d SCORED", game.lastScore); buf[19] = '\x00'; drawOverlay(buf); break;
+        case GAME_STATE_GAMEOVER: sprintf(buf, "P%d WIN", game.lastScore); buf[19] = '\x00'; drawOverlay(buf); break;
     }
     refresh();
 }
