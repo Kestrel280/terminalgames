@@ -6,8 +6,12 @@
 #include <stdlib.h>
 #include "pong.h"
 
-const int screenW;
-const int screenH;
+int clamp(int in, int lo, int hi) {
+    if (in < lo) return lo;
+    else if (in > hi) return hi;
+    else return in;
+}
+
 
 int main(int argc, char* argv[]) {
     initscr(); // ncurses init
@@ -28,17 +32,27 @@ void initColors() {
     if (has_colors() == false) return;
     init_pair(COLOR_PLAYER_PADDLE, COLOR_PLAYER_PADDLE_FG, COLOR_PLAYER_PADDLE_BG);
     init_pair(COLOR_OPPONENT_PADDLE, COLOR_OPPONENT_PADDLE_FG, COLOR_OPPONENT_PADDLE_BG);
+    init_pair(COLOR_BALL, COLOR_BALL_FG, COLOR_BALL_BG);
+    init_pair(COLOR_WALL, COLOR_WALL_FG, COLOR_WALL_BG);
 }
 
 void initGame(Game* game) {
     game->state = GAME_STATE_READY;
     initPlayer(&game->p1, COLOR_PLAYER_PADDLE, 3);
     initPlayer(&game->p2, COLOR_OPPONENT_PADDLE, screenW - 3);
+    game->ball.subx = screenW / 2 * BALL_SUBTICKS;
+    game->ball.suby = screenH / 2 * BALL_SUBTICKS;
+    //game->ball.x = screenW / 2;
+    //game->ball.y = screenH / 2;
+    game->ball.subvx = -2 * BALL_SUBTICKS;
+    game->ball.subvy = 1 * BALL_SUBTICKS;
+    game->ball.colorpair = COLOR_BALL;
+    game->ball.lastCol = -1;
     game->finished = false;
-    game->pauseCounter = 100;
+    game->pauseCounter = READY_TICKS;
 }
 
-void initPlayer(Player* player, int color, int x) {
+void initPlayer(Player* player, int colorpair, int x) {
     player->score = 0;
     player->pad.width = 1;
     player->pad.height = 5;
@@ -46,7 +60,7 @@ void initPlayer(Player* player, int color, int x) {
     player->pad.x = x;
     player->pad.vy = 0;
     player->pad.vx = 0;
-    player->pad.colorpair = color;
+    player->pad.colorpair = colorpair;
 }
 
 /* Game logic */
@@ -64,35 +78,76 @@ void playGame() {
         timeSinceLastTickUs += dtUs;
         tvlast = tvnow;
         gameHandleInput(&game);
-        while (timeSinceLastTickUs > (uint64_t)(16666)) { 
-            timeSinceLastTickUs -= (uint64_t)(16666); 
+        while (timeSinceLastTickUs > (uint64_t)(TICK_TIME_US)) { 
+            timeSinceLastTickUs -= (uint64_t)(TICK_TIME_US); 
             switch(game.state) {
                 case GAME_STATE_READY: 
-                    if (--game.pauseCounter <= 0) { game.pauseCounter = 100; game.state = GAME_STATE_PLAYING; }
+                    if (--game.pauseCounter <= 0) { game.state = GAME_STATE_PLAYING; }
                     break;
                 case GAME_STATE_PLAYING:
                     gameTick(&game);
                     break;
                 case GAME_STATE_SCORED:
-                    if (--game.pauseCounter <= 0) { game.pauseCounter = 100; game.state = GAME_STATE_READY; }
+                    if (--game.pauseCounter <= 0) { game.pauseCounter = READY_TICKS; game.state = GAME_STATE_READY; }
                     break;
             }
         }
+
+        game.frac = ((float)timeSinceLastTickUs / (float)TICK_TIME_US);
 
         drawGame(game);
     }
 }
 
 void gameTick(Game* game) {
-    // Update paddle positions
+    // Update paddle positions, ensuring they stay in bounds
     game->p1.pad.y += game->p1.pad.vy;
     game->p2.pad.y += game->p2.pad.vy;
     game->p1.pad.x += game->p1.pad.vx;
     game->p2.pad.x += game->p2.pad.vx;
+    game->p1.pad.y = clamp(game->p1.pad.y, BORDER_THICKNESS - 1, screenH - game->p1.pad.height);
+    game->p2.pad.y = clamp(game->p2.pad.y, BORDER_THICKNESS - 1, screenH - game->p2.pad.height);
+    game->p1.pad.x = clamp(game->p1.pad.x, BORDER_THICKNESS - 1, screenW / 3 - game->p1.pad.width);
+    game->p2.pad.x = clamp(game->p2.pad.x, screenW / 3 + BORDER_THICKNESS - 1, screenW - game->p2.pad.width);
     game->p1.pad.vy = 0;
     game->p2.pad.vy = 0;
     game->p1.pad.vx = 0;
     game->p2.pad.vx = 0;
+
+    // Update ball position
+    game->ball.subx += game->ball.subvx;
+    game->ball.suby += game->ball.subvy;
+    int newX = game->ball.subx / BALL_SUBTICKS;
+    int newY = game->ball.suby / BALL_SUBTICKS;
+
+    // Paddle collisions
+    if ((game->ball.lastCol != 1)
+        && (newX <= (game->p1.pad.x + game->p1.pad.width))          // new x in/left-of pad 1's right edge
+        && (game->ball.x >= game->p1.pad.x)                         // old x in/right-of pad 1's left edge
+        && (newY >= (game->p1.pad.y))                               // new Y in/below pad 1's top edge
+        && (game->ball.y <= (game->p1.pad.y + game->p1.pad.height)))// old Y in/above pad 1's bottom edge
+    {
+        newX = (game->p1.pad.x + game->p1.pad.width);
+        game->ball.subvx *= -1;
+        game->ball.lastCol = 1;
+    }
+    else if ((game->ball.lastCol != 1)
+        && (newX >= game->p2.pad.x)                                 // new x in/right-of pad 2's left edge
+        && (game->ball.x <= (game->p2.pad.x + game->p2.pad.width))  // old x in/left-of pad 2's right edge
+        && (newY >= (game->p2.pad.y))                               // new Y in/below pad 2's top edge
+        && (game->ball.y <= (game->p2.pad.y + game->p2.pad.height)))// old Y in/above pad 2's bottom edge
+    {
+        newX = (game->p1.pad.x + game->p1.pad.width);
+        game->ball.subvx *= -1;
+        game->ball.lastCol = 2;
+    }
+
+    // Ceiling/floor collisions
+    if (newY <= BORDER_THICKNESS) (game->ball.subvy *= -1);
+    else if (newY >= (screenH - BORDER_THICKNESS)) (game->ball.subvy *= -1);
+
+    game->ball.x = newX;
+    game->ball.y = newY;
     return;
 }
 
@@ -117,9 +172,9 @@ void gameHandleInput(Game* game) {
 void drawGame(Game game) {
     erase();
     drawBorder();
-    drawPaddle(game.p1.pad);
-    drawPaddle(game.p2.pad);
-    drawBall(game.ball);
+    drawPaddle(game.p1.pad, game.frac);
+    drawPaddle(game.p2.pad, game.frac);
+    drawBall(game.ball, game.frac);
     switch (game.state) {
         case GAME_STATE_READY: drawOverlay("READY"); break;
         case GAME_STATE_SCORED: drawOverlay("SCORED"); break;
@@ -132,19 +187,36 @@ void drawOverlay(const char* msg) {
 }
 
 void drawBorder() {
+    int x, y = 0;
+    attron(COLOR_PAIR(COLOR_WALL));
+    for (x = 0; x < screenW + 1; x++) mvaddch(y, x, 'x');
+    y = screenH;
+    for (x = 0; x < screenW + 1; x++) mvaddch(y, x, 'x');
+    x = 0;
+    for (y = 0; y < screenH; y++) mvaddch(y, x, 'x');
+    x = screenW;
+    for (y = 0; y < screenH; y++) mvaddch(y, x, 'x');
+    attroff(COLOR_PAIR(COLOR_WALL));
     return;
 }
 
-void drawPaddle(Paddle pad) {
+void drawPaddle(Paddle pad, float frac) {
+    int x = pad.x + (int)((float)pad.vx * frac);
+    int y = pad.y + (int)((float)pad.vy * frac);
     attron(COLOR_PAIR(pad.colorpair));
     for (int j = 0; j < pad.width; j++) {
         for (int i = 0; i < pad.height; i++) {
-            mvaddch(i + pad.y, j + pad.x, '#');
+            mvaddch(i + y, j + x, '#');
         }
     }
     attroff(COLOR_PAIR(pad.colorpair));
 }
 
-void drawBall(Ball ball) {
+void drawBall(Ball ball, float frac) {
+    int x = ball.x + (int)((float)ball.subvx * frac / (float)BALL_SUBTICKS);
+    int y = ball.y + (int)((float)ball.subvy * frac / (float)BALL_SUBTICKS);
+    attron(COLOR_PAIR(ball.colorpair));
+    mvaddch(y, x, 'O');
+    attroff(COLOR_PAIR(ball.colorpair));
     return;
 }

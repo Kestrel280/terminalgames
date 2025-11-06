@@ -1,23 +1,34 @@
 #define PADDLE_CH '#'
 #define BALL_CH 'O'
 
+#define COLOR_BALL_BG COLOR_BLUE
+#define COLOR_BALL_FG COLOR_BALL_BG
 #define COLOR_PLAYER_PADDLE_BG COLOR_WHITE
 #define COLOR_PLAYER_PADDLE_FG COLOR_PLAYER_PADDLE_BG
 #define COLOR_OPPONENT_PADDLE_BG COLOR_RED
 #define COLOR_OPPONENT_PADDLE_FG COLOR_OPPONENT_PADDLE_BG
+#define COLOR_WALL_BG COLOR_RED
+#define COLOR_WALL_FG COLOR_WALL_BG
 
 typedef struct _paddle Paddle;
 typedef struct _ball Ball;
 typedef struct _game Game;
 typedef struct _player Player;
 
-const int screenW = 50;
-const int screenH = 25;
+const int screenW = 80;
+const int screenH = 35;
+const uint64_t TICK_TIME_US = 100000;
+const int BORDER_THICKNESS = 2;
+const int READY_TICKS = 10;
+const int SCORED_TICKS = 10;
+const int BALL_SUBTICKS = 10;
 
 enum {
     COLOR_UNUSED,
     COLOR_PLAYER_PADDLE,
-    COLOR_OPPONENT_PADDLE
+    COLOR_OPPONENT_PADDLE,
+    COLOR_BALL,
+    COLOR_WALL
 };
 
 enum {
@@ -37,10 +48,14 @@ struct _paddle {
 };
 
 struct _ball {
+    int subx;
+    int suby;
     int y;
     int x;
-    int vy;
-    int vx;
+    int subvy;
+    int subvx;
+    int colorpair;
+    int lastCol;
 };
 
 struct _player {
@@ -55,6 +70,7 @@ struct _game {
     Player p2;
     Ball ball;
     int pauseCounter;
+    float frac; // percentage to next tick, 0-1
 };
 
 /* Setup */
@@ -71,5 +87,5 @@ void gameHandleInput(Game* game);
 void drawGame(Game game);
 void drawOverlay(const char* msg);
 void drawBorder();
-void drawPaddle(Paddle pad);
-void drawBall(Ball ball);
+void drawPaddle(Paddle pad, float frac);
+void drawBall(Ball ball, float frac);
