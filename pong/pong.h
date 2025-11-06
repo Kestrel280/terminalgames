@@ -19,7 +19,7 @@ typedef struct _ball Ball;
 typedef struct _game Game;
 typedef struct _player Player;
 
-const int screenW = 80;
+const int screenW = 160;
 const int screenH = 35;
 const uint64_t TICK_TIME_US = 100000;
 const int BORDER_THICKNESS = 2;
@@ -91,6 +91,7 @@ void initPlayer(Player* player, int color, int x);
 void playGame();
 void score(Game* game, int player);
 void winGame(Game* game, int player);
+void doAi(Game* game);
 void gameTick(Game* game);
 void gameHandleInput(Game* game);
 

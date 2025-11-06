@@ -57,7 +57,7 @@ void initGame(Game* game) {
 
 void initPlayer(Player* player, int colorpair, int x) {
     player->score = 0;
-    player->pad.width = 1;
+    player->pad.width = 2;
     player->pad.height = 5;
     player->pad.y = screenH / 2;
     player->pad.x = x;
@@ -121,8 +121,8 @@ void score(Game* game, int player) {
     game->ball.lastCol = -1;
     game->ball.subx = screenW / 2 * BALL_SUBTICKS;
     game->ball.suby = screenH / 2 * BALL_SUBTICKS;
-    game->ball.subvx = -2 * BALL_SUBTICKS;
-    game->ball.subvy = 1 * BALL_SUBTICKS;
+    game->ball.subvx = -2 * BALL_SUBTICKS * (player == 1 ? 1 : -1);
+    //game->ball.subvy = 1 * BALL_SUBTICKS; // Don't reset subvy, adds a little variety
     game->ball.x = game->ball.subx / BALL_SUBTICKS;
     game->ball.y = game->ball.suby / BALL_SUBTICKS;
     if ((game->p1.score >= WIN_SCORE) || (game->p2.score >= WIN_SCORE)) winGame(game, player);
@@ -133,20 +133,28 @@ void winGame(Game* game, int player) {
     game->state = GAME_STATE_GAMEOVER;
 }
 
+void doAi(Game* game) {
+    int adjPadY = game->p2.pad.y + game->p2.pad.height / 2;
+
+    int absDy = abs(adjPadY - game->ball.y);
+    if (absDy < 1) game->p2.pad.vx -= 2;
+    else {
+        game->p2.pad.vy += (adjPadY - game->ball.y < 0 ? 2 : -2);
+        if (absDy > 1) game->p2.pad.vx += 2;
+    }
+    return;
+}
+
 void gameTick(Game* game) {
+    doAi(game);
+
+    // Calculate new paddle positions, but don't apply them yet; will influence ball collision
     // Update paddle positions, ensuring they stay in bounds
-    game->p1.pad.y += game->p1.pad.vy;
-    game->p2.pad.y += game->p2.pad.vy;
-    game->p1.pad.x += game->p1.pad.vx;
-    game->p2.pad.x += game->p2.pad.vx;
-    game->p1.pad.y = clamp(game->p1.pad.y, BORDER_THICKNESS - 1, screenH - game->p1.pad.height);
-    game->p2.pad.y = clamp(game->p2.pad.y, BORDER_THICKNESS - 1, screenH - game->p2.pad.height);
-    game->p1.pad.x = clamp(game->p1.pad.x, BORDER_THICKNESS - 1, screenW / 3 - game->p1.pad.width);
-    game->p2.pad.x = clamp(game->p2.pad.x, 2 * screenW / 3, screenW - game->p2.pad.width);
-    game->p1.pad.vy = 0;
-    game->p2.pad.vy = 0;
-    game->p1.pad.vx = 0;
-    game->p2.pad.vx = 0;
+    // Don't update velocity yet: will influence ball velocity if there's contact
+    int pad1NewY = clamp(game->p1.pad.y + game->p1.pad.vy, BORDER_THICKNESS - 1, screenH - game->p1.pad.height);
+    int pad2NewY = clamp(game->p2.pad.y + game->p2.pad.vy, BORDER_THICKNESS - 1, screenH - game->p2.pad.height);
+    int pad1NewX = clamp(game->p1.pad.x + game->p1.pad.vx, BORDER_THICKNESS - 1, screenW / 3 - game->p1.pad.width);
+    int pad2NewX = clamp(game->p2.pad.x + game->p2.pad.vx, 2 * screenW / 3, screenW - game->p2.pad.width);
 
     // Update ball position
     game->ball.subx += game->ball.subvx;
@@ -156,25 +164,37 @@ void gameTick(Game* game) {
 
     // Paddle collisions
     if ((game->ball.lastCol != 1)
-        && (newX <= (game->p1.pad.x + game->p1.pad.width))          // new x in/left-of pad 1's right edge
-        && (game->ball.x >= game->p1.pad.x)                         // old x in/right-of pad 1's left edge
-        && (newY >= (game->p1.pad.y))                               // new Y in/below pad 1's top edge
-        && (game->ball.y <= (game->p1.pad.y + game->p1.pad.height)))// old Y in/above pad 1's bottom edge
+        && (newX <= (pad1NewX + game->p1.pad.width))            // new x in/left-of pad 1's new right edge
+        && (game->ball.x >= game->p1.pad.x)                     // old x in/right-of pad 1's old left edge
+        && (newY >= pad1NewY)                                   // new Y in/below pad 1's new top edge
+        && (game->ball.y <= (pad1NewY + game->p1.pad.height)))  // old Y in/above pad 1's new bottom edge
     {
         newX = (game->p1.pad.x + game->p1.pad.width);
         game->ball.subvx *= -1;
+        game->ball.subvx = clamp(game->ball.subvx + (game->p1.pad.vx * BALL_SUBTICKS / 3), 10, 40);
+        game->ball.subvy += game->p1.pad.vy * BALL_SUBTICKS / 3;
         game->ball.lastCol = 1;
     }
-    else if ((game->ball.lastCol != 1)
-        && (newX >= game->p2.pad.x)                                 // new x in/right-of pad 2's left edge
-        && (game->ball.x <= (game->p2.pad.x + game->p2.pad.width))  // old x in/left-of pad 2's right edge
-        && (newY >= (game->p2.pad.y))                               // new Y in/below pad 2's top edge
-        && (game->ball.y <= (game->p2.pad.y + game->p2.pad.height)))// old Y in/above pad 2's bottom edge
+    else if ((game->ball.lastCol != 2)
+        && (newX >= pad2NewX)                                       // new x in/right-of pad 2's new left edge
+        && (game->ball.x <= (game->p2.pad.x + game->p2.pad.width))  // old x in/left-of pad 2's old right edge
+        && (newY >= pad2NewY)                                       // new Y in/below pad 2's new top edge
+        && (game->ball.y <= (pad2NewY + game->p2.pad.height)))      // old Y in/above pad 2's new bottom edge
     {
-        newX = (game->p1.pad.x + game->p1.pad.width);
+        newX = game->p2.pad.x;
         game->ball.subvx *= -1;
         game->ball.lastCol = 2;
     }
+
+    // Apply new paddle values now
+    game->p1.pad.vy = 0;
+    game->p2.pad.vy = 0;
+    game->p1.pad.vx = 0;
+    game->p2.pad.vx = 0;
+    game->p1.pad.y = pad1NewY;
+    game->p2.pad.y = pad2NewY;
+    game->p1.pad.x = pad1NewX;
+    game->p2.pad.x = pad2NewX;
 
     // Ceiling/floor collisions
     if (newY <= BORDER_THICKNESS) (game->ball.subvy *= -1);
@@ -251,8 +271,13 @@ void drawBorder() {
 }
 
 void drawPaddle(Paddle pad, float frac) {
+#ifdef INTERPOLATE
     int x = pad.x + (int)((float)pad.vx * frac);
     int y = pad.y + (int)((float)pad.vy * frac);
+#else
+    int x = pad.x;
+    int y = pad.y;
+#endif
     attron(COLOR_PAIR(pad.colorpair));
     for (int j = 0; j < pad.width; j++) {
         for (int i = 0; i < pad.height; i++) {
@@ -263,8 +288,13 @@ void drawPaddle(Paddle pad, float frac) {
 }
 
 void drawBall(Ball ball, float frac) {
+#ifdef INTERPOLATE
     int x = ball.x + (int)((float)ball.subvx * frac / (float)BALL_SUBTICKS);
     int y = ball.y + (int)((float)ball.subvy * frac / (float)BALL_SUBTICKS);
+#else
+    int x = ball.x;
+    int y = ball.y;
+#endif
     attron(COLOR_PAIR(ball.colorpair));
     mvaddch(y, x, 'O');
     attroff(COLOR_PAIR(ball.colorpair));

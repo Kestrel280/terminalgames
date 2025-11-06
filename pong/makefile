@@ -1,10 +1,11 @@
-all: pong
+default:
+	echo "usage: make normal | make interp"
 
-pong: pong.o
-	gcc -Wall -lncurses *.o -o pong
+normal: pong.c pong.h
+	gcc -Wall -lncurses pong.c -o pong
 
-%.o: %.c %.h
-	gcc -Wall -c $< -o $@
+interp: pong.c pong.h
+	gcc -Wall -DINTERPOLATE -lncurses pong.c -o pong
 
 clean:
 	rm pong *.o
