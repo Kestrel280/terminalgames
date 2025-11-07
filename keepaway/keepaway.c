@@ -1,3 +1,6 @@
+#include <ncurses.h>
+#include "keepaway.h"
+#include "mainmenu.h"
 #include "keepaway.h"
 
 // Globals
@@ -22,6 +25,7 @@ void setCell(Cell** lvl, int** graph, int row, int col, bool newState) {
     }
 }
 
-int main() {
-    return 0;
+void playGame() {
+    printw("playgame");
+    getch();
 }

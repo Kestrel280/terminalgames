@@ -1,3 +1,6 @@
+#ifndef KEEPAWAY_H
+#define KEEPAWAY_H
+
 typedef struct _cell Cell;
 
 struct _cell {
@@ -6,3 +9,6 @@ struct _cell {
 
 int gridToIdx(int row, int col);
 void setCell(Cell** lvl, int** graph, int row, int col, bool newState);
+void playGame();
+
+#endif

@@ -1,7 +1,7 @@
 all: keepaway
 
-keepaway: keepaway.o
-	gcc -Wall *.o -o $@
+keepaway: main.o mainmenu.o keepaway.o
+	gcc -Wall *.o -o $@ -lncurses
 
 %.o: %.c %.h
 	gcc -Wall -c $< -o $@
