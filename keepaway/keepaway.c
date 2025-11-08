@@ -1,6 +1,7 @@
 #include <ncurses.h>
 #include <sys/time.h>
 #include <stdlib.h>
+#include <string.h>
 #include <inttypes.h>
 #include "keepaway.h"
 #include "mainmenu.h"
@@ -17,15 +18,20 @@ void setCell(Game* game, int row, int col, int newType, int hp) {
     game->lvl[row][col].hp = hp;
     bool passable = ((newType == CELL_EMPTY) || (newType == CELL_START) || (newType == CELL_END));
 
+    // update adj matrix: my own row & col, for entries corresponding to neighbors which are also passable
     for (int y = row - 1; y <= row + 1; y += 2) {
         if ((y < 0) || (y >= game->numRows)) continue; // oob check
-        int nidx = gridToIdx(y, col, game->numCols);
-        game->adj[nidx][myIdx] = passable;
+        int nIdx = gridToIdx(y, col, game->numCols);
+        bool npassable = (game->lvl[y][col].type == CELL_EMPTY) || (game->lvl[y][col].type == CELL_START) || (game->lvl[y][col].type == CELL_END); 
+        game->adj[nIdx][myIdx] = passable && npassable;
+        game->adj[myIdx][nIdx] = passable && npassable;
     }
     for (int x = col - 1; x <= col + 1; x+= 2) {
         if ((x < 0) || (x >= game->numCols)) continue; // oob check
-        int nidx = gridToIdx(row, x, game->numCols);
-        game->adj[nidx][myIdx] = passable;
+        int nIdx = gridToIdx(row, x, game->numCols);
+        bool npassable = (game->lvl[row][x].type == CELL_EMPTY) || (game->lvl[row][x].type == CELL_START) || (game->lvl[row][x].type == CELL_END); 
+        game->adj[nIdx][myIdx] = passable && npassable;
+        game->adj[myIdx][nIdx] = passable && npassable;
     }
 }
 
@@ -35,8 +41,10 @@ void gamePlay() {
     uint64_t dtUs;
     gettimeofday(&tv_last, NULL);
     Game game;
-    gameInit(&game, 11, 11);
+    gameInit(&game, 6, 6);
     bool exit = false;
+    clear();
+    refresh();
 
     nodelay(game.window, TRUE); // disable blocking on getch()
 
@@ -66,21 +74,35 @@ void gameInit(Game* game, int numRows, int numCols) {
     game->endPos = gridToIdx(0, numCols / 2, numCols);
 
     // initialize adj matrix
-    game->adj = (int**)malloc(sizeof(int*) * game->numVerts);
+    game->adj = (bool**)malloc(sizeof(bool*) * game->numVerts);
     for (int i = 0; i < game->numVerts; i++) {
-        game->adj[i] = (int*)malloc(sizeof(int) * game->numVerts);
+        game->adj[i] = (bool*)malloc(sizeof(bool) * game->numVerts);
+        memset(game->adj[i], (char)false, sizeof(bool) * game->numVerts);
     }
 
-    // initialize cell data
+    // initialize cell data, then populate
     game->lvl = (Cell**)malloc(sizeof(Cell*) * numRows);
+    for (int row = 0; row < numRows; row++) { game->lvl[row] = (Cell*)malloc(sizeof(Cell) * numCols); }
     for (int row = 0; row < numRows; row++) {
-        game->lvl[row] = (Cell*)malloc(sizeof(Cell) * numCols);
         for (int col = 0; col < numCols; col++) {
             setCell(game, row, col, ((row*col == 0) || (row == numRows-1) || (col == numCols-1)) ? CELL_PERM_WALL : CELL_EMPTY, 0);
         }
     }
+
     setCell(game, idxToRow(game->startPos, numCols), idxToCol(game->startPos, numCols), CELL_START, 0);
     setCell(game, idxToRow(game->endPos, numCols), idxToCol(game->endPos, numCols), CELL_END, 0);
+
+    // debug: dump adj to stderr
+    fprintf(stderr, "   ");
+    for (int vert = 0; vert < game->numVerts; vert++) fprintf(stderr, "%3d", vert);
+    fprintf(stderr, "\n");
+    for (int vert = 0; vert < game->numVerts; vert++) {
+        fprintf(stderr, "%3d", vert);
+        for (int conn = 0; conn < game->numVerts; conn++) {
+            fprintf(stderr, game->adj[vert][conn] ? "  1" : "  0");
+        }
+        fprintf(stderr, "\n");
+    }
 
     // initialize RedGuy
     game->rg.curPos = game->startPos;
@@ -110,7 +132,7 @@ void gameTick(Game* game, uint64_t dtUs) {
     return;
 }
 
-bool pathfind(int** adj, int startPos, int endPos, int* path, int* pathLen) {
+bool pathfind(bool** adj, int startPos, int endPos, int* path, int* pathLen) {
     // Path should have capacity == # of elements in adj
     *pathLen = 3;
     for (int i = 0; i < 3; i++) path[i] = i;
@@ -126,6 +148,8 @@ void paintCh(char c, WINDOW* win, int row, int col, int colorpair) {
 
 void gameDraw(Game* game) {
     werase(game->window);
+    
+    // first draw play field as normal
     for (int row = 0; row < game->numRows; row++) {
         for (int col = 0; col < game->numCols; col++) {
             switch (game->lvl[row][col].type) {
@@ -137,6 +161,17 @@ void gameDraw(Game* game) {
             }
         }
     }
+
+    // draw red guy path
+    for (int i = 0; i < game->rg.pathLen; i++) {
+        wattron(game->window, A_REVERSE);
+        paintCh(CHAR_CELL_EMPTY, game->window, idxToRow(game->rg.path[i], game->numCols), idxToCol(game->rg.path[i], game->numCols), COLOR_CELL_EMPTY);
+        wattroff(game->window, A_REVERSE);
+    }
+
+    // draw red guy
+
+    // draw player/cursor
     wrefresh(game->window);
     return;
 }

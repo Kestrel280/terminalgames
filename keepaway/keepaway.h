@@ -11,10 +11,10 @@
 #define COLOR_CELL_TEMP_WALL_BG COLOR_WHITE
 #define COLOR_CELL_TEMP_WALL_FG COLOR_WHITE
 #define CHAR_CELL_START 'S'
-#define COLOR_CELL_START_FG COLOR_CYAN
+#define COLOR_CELL_START_FG COLOR_BLUE
 #define COLOR_CELL_START_BG COLOR_CELL_START_FG
 #define CHAR_CELL_END 'E'
-#define COLOR_CELL_END_FG COLOR_RED
+#define COLOR_CELL_END_FG COLOR_YELLOW
 #define COLOR_CELL_END_BG COLOR_CELL_END_FG
 
 typedef struct _cell Cell;
@@ -60,7 +60,7 @@ struct _game {
     Cell** lvl;
     int startPos, endPos;
     RedGuy rg;
-    int** adj;
+    bool** adj;
     int state;
     WINDOW* window;
 };
@@ -71,6 +71,6 @@ void gameInit(Game* game, int numRows, int numCols);
 void gameDestroy(Game** pgame);
 void gameTick(Game* game, uint64_t dtUs);
 void gameDraw(Game* game);
-bool pathfind(int** adj, int startPos, int endPos, int* path, int* pathLen);
+bool pathfind(bool** adj, int startPos, int endPos, int* path, int* pathLen);
 
 #endif
