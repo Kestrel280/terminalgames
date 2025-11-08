@@ -55,6 +55,7 @@ void gamePlay() {
     nodelay(game.window, TRUE); // disable blocking on getch()
 
     while (!exit) {
+        gameHandleInput(&game);
         gettimeofday(&tv_now, NULL);
         dtUs = ((uint64_t)1000000) * ((uint64_t)tv_now.tv_sec - (uint64_t)tv_last.tv_sec) + ((uint64_t)tv_now.tv_usec - (uint64_t)tv_last.tv_usec);
         tv_last = tv_now;
@@ -66,15 +67,31 @@ void gamePlay() {
         gameDraw(&game);
     }
 
-    printw("playgame");
-    getch();
+    // clean up
     nodelay(game.window, FALSE); // re-enable blocking on getch()
+    char buf[128];
+    sprintf(buf, "GAME OVER | SCORE = %d | PRESS ANY KEY", game.score);
+    drawOverlay(buf);
+    getch();
+    gameDestroy(&game);
     return;
+}
+
+void gameHandleInput(Game* game) {
+    int key = wgetch(game->window);
+    switch (key) {
+        case KEY_UP: game->player.curPos -= game->player.curPos >= game->numCols ? game->numCols : 0; break;
+        case KEY_DOWN: game->player.curPos += game->player.curPos < (game->numCols * (game->numCols - 1)) ? game->numCols : 0; break;
+        case KEY_RIGHT: game->player.curPos += ((game->player.curPos + 1) % game->numCols) == 0 ? 0 : 1; break;
+        case KEY_LEFT: game->player.curPos -= ((game->player.curPos) % game->numCols) == 0 ? 0 : 1; break;
+        case ERR: break;
+    }
 }
 
 void gameInit(Game* game, int numRows, int numCols) {
     // initialize basic board properties
     game->state = GAME_STATE_ACTIVE;
+    game->score = 0;
     game->numVerts = numRows * numCols;
     game->numRows = numRows;
     game->numCols = numCols;
@@ -122,22 +139,25 @@ void gameInit(Game* game, int numRows, int numCols) {
     game->rg.pathProgress = 0;
     DEBUG_PRINT("redguy initial path has length %d\n", game->rg.pathLen);
 
+    // initialize Player
+    game->player.curPos = game->endPos;
+    game->player.numBarricades = 10;
+
     // create game window
     int h, w;
     getmaxyx(stdscr, h, w);
     game->window = newwin(numRows, numCols, (h - numRows) / 2, (w - numCols) / 2);
+    keypad(game->window, TRUE);
     clear();
     return;
 }
 
-void gameDestroy(Game** pgame) {
-    Game* game = *pgame;
+void gameDestroy(Game* game) {
     for (int i = 0; i < game->numRows; i++) free(game->lvl[i]);
     free(game->lvl);
     for (int i = 0; i < game->numVerts; i++) free(game->adj[i]);
     free(game->adj);
     free(game->rg.path);
-    *pgame = NULL;
     return;
 }
 
@@ -233,6 +253,16 @@ void gameDraw(Game* game) {
     paintCh(CHAR_REDGUY, game->window, idxToRow(game->rg.curPos, game->numCols), idxToCol(game->rg.curPos, game->numCols), COLOR_REDGUY);
 
     // draw player/cursor
+    paintCh(CHAR_PLAYER, game->window, idxToRow(game->player.curPos, game->numCols), idxToCol(game->player.curPos, game->numCols), COLOR_PLAYER);
+
     wrefresh(game->window);
+    return;
+}
+
+void drawOverlay(const char* msg) {
+    int h, w;
+    getmaxyx(stdscr, h, w);
+    mvprintw(h / 2, (w - strlen(msg)) / 2, msg);
+    refresh();
     return;
 }
