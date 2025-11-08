@@ -57,6 +57,7 @@ void gamePlay() {
     while (!exit) {
         gettimeofday(&tv_now, NULL);
         dtUs = ((uint64_t)1000000) * ((uint64_t)tv_now.tv_sec - (uint64_t)tv_last.tv_sec) + ((uint64_t)tv_now.tv_usec - (uint64_t)tv_last.tv_usec);
+        tv_last = tv_now;
         switch (game.state) {
             case GAME_STATE_ACTIVE: gameTick(&game, dtUs); break;
             case GAME_STATE_EXIT: exit = true; break;
@@ -73,6 +74,7 @@ void gamePlay() {
 
 void gameInit(Game* game, int numRows, int numCols) {
     // initialize basic board properties
+    game->state = GAME_STATE_ACTIVE;
     game->numVerts = numRows * numCols;
     game->numRows = numRows;
     game->numCols = numCols;
@@ -99,6 +101,7 @@ void gameInit(Game* game, int numRows, int numCols) {
     setCell(game, idxToRow(game->endPos, numCols), idxToCol(game->endPos, numCols), CELL_END, 0);
 
     // debug: dump adj to stderr
+    /*
     DEBUG_PRINT("   ");
     for (int vert = 0; vert < game->numVerts; vert++) DEBUG_PRINT("%3d", vert);
     DEBUG_PRINT("\n");
@@ -109,10 +112,14 @@ void gameInit(Game* game, int numRows, int numCols) {
         }
         DEBUG_PRINT("\n");
     }
+    */
 
     // initialize RedGuy
+    game->rg.basePatience = 1000000;
+    game->rg.patience = game->rg.basePatience;
     game->rg.curPos = game->startPos;
     game->rg.path = PATHFIND(game->adj, game->startPos, game->endPos, game->numVerts, &(game->rg.pathLen));
+    game->rg.pathProgress = 0;
     DEBUG_PRINT("redguy initial path has length %d\n", game->rg.pathLen);
 
     // create game window
@@ -135,6 +142,17 @@ void gameDestroy(Game** pgame) {
 }
 
 void gameTick(Game* game, uint64_t dtUs) {
+    if ((game->rg.patience -= (int64_t)dtUs) < 0) {
+        game->rg.curPos = game->rg.path[game->rg.pathProgress++];
+        if (game->rg.curPos == game->endPos) gameOver(game);
+        game->rg.basePatience -= game->rg.basePatience / 20;
+        game->rg.patience += game->rg.basePatience;
+    }
+    return;
+}
+
+void gameOver(Game* game) {
+    game->state = GAME_STATE_EXIT;
     return;
 }
 
@@ -212,7 +230,7 @@ void gameDraw(Game* game) {
     }
 
     // draw red guy
-
+    paintCh(CHAR_REDGUY, game->window, idxToRow(game->rg.curPos, game->numCols), idxToCol(game->rg.curPos, game->numCols), COLOR_REDGUY);
 
     // draw player/cursor
     wrefresh(game->window);

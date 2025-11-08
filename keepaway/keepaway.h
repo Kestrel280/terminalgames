@@ -18,6 +18,9 @@
 #define CHAR_CELL_END 'E'
 #define COLOR_CELL_END_FG COLOR_YELLOW
 #define COLOR_CELL_END_BG COLOR_CELL_END_FG
+#define CHAR_REDGUY '#'
+#define COLOR_REDGUY_FG COLOR_RED
+#define COLOR_REDGUY_BG COLOR_BLACK
 
 typedef struct _cell Cell;
 typedef struct _game Game;
@@ -43,7 +46,8 @@ enum {
     COLOR_CELL_PERM_WALL,
     COLOR_CELL_TEMP_WALL,
     COLOR_CELL_START,
-    COLOR_CELL_END
+    COLOR_CELL_END,
+    COLOR_REDGUY
 };
 
 struct _cell {
@@ -54,17 +58,20 @@ struct _cell {
 struct _redguy {
     int curPos;
     int* path;
+    int pathProgress;
     int pathLen;
+    int64_t basePatience;
+    int64_t patience;
 };
 
 struct _game {
-    int numRows, numCols, numVerts;
-    Cell** lvl;
-    int startPos, endPos;
-    RedGuy rg;
-    bool** adj;
-    int state;
-    WINDOW* window;
+    int state; //GAME_STATE_... enum
+    int numRows, numCols, numVerts; // lvl metadata
+    int startPos, endPos; // lvl start/end locations
+    Cell** lvl; // lvl data
+    bool** adj; // lvl adjacency matrix
+    RedGuy rg; // red guy
+    WINDOW* window; // ncurses window
 };
 
 void setCell(Game* game, int row, int col, int newType, int hp);
@@ -73,6 +80,7 @@ void gameInit(Game* game, int numRows, int numCols);
 void gameDestroy(Game** pgame);
 void gameTick(Game* game, uint64_t dtUs);
 void gameDraw(Game* game);
+void gameOver(Game* game);
 
 int* pathfind_bfs(bool** adj, int startPos, int endPos, int numVerts, int* pathLen);
 
