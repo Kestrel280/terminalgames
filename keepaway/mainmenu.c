@@ -35,7 +35,7 @@ bool doMainMenu() {
             case KEY_DOWN: choice++; break;
             case '\n': {
                 switch (choice) {
-                    case 0: playGame(); break;
+                    case 0: gamePlay(); break;
                     case 1: quit = true; break;
                 }
             }

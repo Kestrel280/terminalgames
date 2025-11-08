@@ -3,12 +3,21 @@
 #include "mainmenu.h"
 #include "keepaway.h"
 
+void initColors() {
+    start_color();
+    if (has_colors() == false) return;
+    init_pair(COLOR_CELL_EMPTY, COLOR_CELL_EMPTY_FG, COLOR_CELL_EMPTY_BG);
+    init_pair(COLOR_CELL_PERM_WALL, COLOR_CELL_PERM_WALL_FG, COLOR_CELL_PERM_WALL_BG);
+    init_pair(COLOR_CELL_TEMP_WALL, COLOR_CELL_TEMP_WALL_FG, COLOR_CELL_TEMP_WALL_BG);
+}
+
 int main() {
     initscr(); // start ncurses
     noecho(); // ncurses disable echo
     keypad(stdscr, TRUE); // allow ncurses to capture arrowkeys
     cbreak();
     curs_set(0); // invisible cursor
+    initColors();
 
     while (1) {
         if (doMainMenu()) break;
