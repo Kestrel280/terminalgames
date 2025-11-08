@@ -1,0 +1,1 @@
+initialized COLOR_CELL_END=5

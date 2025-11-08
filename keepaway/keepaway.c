@@ -119,9 +119,9 @@ bool pathfind(int** adj, int startPos, int endPos, int* path, int* pathLen) {
 
 /* Drawing */
 void paintCh(char c, WINDOW* win, int row, int col, int colorpair) {
-    attron(COLOR_PAIR(colorpair));
+    wattron(win, COLOR_PAIR(colorpair));
     mvwaddch(win, row, col, c);
-    attroff(COLOR_PAIR(colorpair));
+    wattroff(win, COLOR_PAIR(colorpair));
 }
 
 void gameDraw(Game* game) {
