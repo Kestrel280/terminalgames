@@ -1,6 +1,8 @@
 #ifndef KEEPAWAY_H
 #define KEEPAWAY_H
 
+#define PATHFIND pathfind_bfs
+
 #define CHAR_CELL_EMPTY '.'
 #define COLOR_CELL_EMPTY_BG COLOR_BLACK
 #define COLOR_CELL_EMPTY_FG COLOR_WHITE
@@ -71,6 +73,7 @@ void gameInit(Game* game, int numRows, int numCols);
 void gameDestroy(Game** pgame);
 void gameTick(Game* game, uint64_t dtUs);
 void gameDraw(Game* game);
-bool pathfind(bool** adj, int startPos, int endPos, int* path, int* pathLen);
+
+int* pathfind_bfs(bool** adj, int startPos, int endPos, int numVerts, int* pathLen);
 
 #endif

@@ -7,6 +7,12 @@
 #include "mainmenu.h"
 #include "keepaway.h"
 
+#ifdef DEBUG
+#define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define DEBUG_PRINT(...)
+#endif
+
 /* Helpers */
 static inline int gridToIdx(int row, int col, int numCols) { return (col + (row * numCols)); }
 static inline int idxToRow(int idx, int numCols) { return idx / numCols; }
@@ -41,7 +47,7 @@ void gamePlay() {
     uint64_t dtUs;
     gettimeofday(&tv_last, NULL);
     Game game;
-    gameInit(&game, 6, 6);
+    gameInit(&game, 15, 15);
     bool exit = false;
     clear();
     refresh();
@@ -93,21 +99,21 @@ void gameInit(Game* game, int numRows, int numCols) {
     setCell(game, idxToRow(game->endPos, numCols), idxToCol(game->endPos, numCols), CELL_END, 0);
 
     // debug: dump adj to stderr
-    fprintf(stderr, "   ");
-    for (int vert = 0; vert < game->numVerts; vert++) fprintf(stderr, "%3d", vert);
-    fprintf(stderr, "\n");
+    DEBUG_PRINT("   ");
+    for (int vert = 0; vert < game->numVerts; vert++) DEBUG_PRINT("%3d", vert);
+    DEBUG_PRINT("\n");
     for (int vert = 0; vert < game->numVerts; vert++) {
-        fprintf(stderr, "%3d", vert);
+        DEBUG_PRINT("%3d", vert);
         for (int conn = 0; conn < game->numVerts; conn++) {
-            fprintf(stderr, game->adj[vert][conn] ? "  1" : "  0");
+            DEBUG_PRINT(game->adj[vert][conn] ? "  1" : "  0");
         }
-        fprintf(stderr, "\n");
+        DEBUG_PRINT("\n");
     }
 
     // initialize RedGuy
     game->rg.curPos = game->startPos;
-    game->rg.path = (int*)malloc(sizeof(game->numVerts));
-    pathfind(game->adj, game->startPos, game->endPos, game->rg.path, &(game->rg.pathLen));
+    game->rg.path = PATHFIND(game->adj, game->startPos, game->endPos, game->numVerts, &(game->rg.pathLen));
+    DEBUG_PRINT("redguy initial path has length %d\n", game->rg.pathLen);
 
     // create game window
     int h, w;
@@ -132,11 +138,49 @@ void gameTick(Game* game, uint64_t dtUs) {
     return;
 }
 
-bool pathfind(bool** adj, int startPos, int endPos, int* path, int* pathLen) {
-    // Path should have capacity == # of elements in adj
-    *pathLen = 3;
-    for (int i = 0; i < 3; i++) path[i] = i;
-    return true;
+/* Pathfinding algorithms */
+int* pathfind_bfs(bool** adj, int startVert, int endVert, int numVerts, int* pathLen) {
+    int parent[numVerts];
+    int queue[numVerts];
+    int queueStart = -1;
+    int queueEnd = 0;
+    int curVert;
+
+    // haven't explored anything yet
+    for (int i = 0; i < numVerts; i++) parent[i] = -1;
+
+    // push the starting node into the queue and mark it as its own parent
+    queue[++queueStart] = startVert;
+    parent[startVert] = startVert;
+
+    while (queueStart <= queueEnd) {
+        curVert = queue[queueStart++];
+        DEBUG_PRINT("pathfind_bfs exploring vert %d\n", curVert);
+        for (int neighborVert = 0; neighborVert < numVerts; neighborVert++) {
+            // found target
+            if (adj[curVert][neighborVert] && (neighborVert == endVert)) {
+                parent[neighborVert] = curVert;
+                int sz = 1, n = curVert; // initialize backtrackVert to neighborVert; sz to 1, to include starting vert
+                while (n != startVert) { sz++; n = parent[n]; } // determine size of path
+                *pathLen = sz;
+                int* out = (int*)malloc(sizeof(int) * sz);
+                n = curVert; // backtrack once more to store the path
+                out[--sz] = endVert;
+                while (n != startVert) { out[--sz] = n; n = parent[n]; }
+                return out;
+            }
+
+            // not the target yet
+            if (adj[curVert][neighborVert] && (parent[neighborVert] == -1)) { // found a new node: enqueue it and set its parent
+                queue[++queueEnd] = neighborVert;
+                parent[neighborVert] = curVert;
+            }
+        }
+    }
+
+    // target not found
+    *pathLen = 0;
+    return NULL;
 }
 
 /* Drawing */
@@ -149,7 +193,7 @@ void paintCh(char c, WINDOW* win, int row, int col, int colorpair) {
 void gameDraw(Game* game) {
     werase(game->window);
     
-    // first draw play field as normal
+    // first draw play field
     for (int row = 0; row < game->numRows; row++) {
         for (int col = 0; col < game->numCols; col++) {
             switch (game->lvl[row][col].type) {
@@ -162,14 +206,13 @@ void gameDraw(Game* game) {
         }
     }
 
-    // draw red guy path
-    for (int i = 0; i < game->rg.pathLen; i++) {
-        wattron(game->window, A_REVERSE);
-        paintCh(CHAR_CELL_EMPTY, game->window, idxToRow(game->rg.path[i], game->numCols), idxToCol(game->rg.path[i], game->numCols), COLOR_CELL_EMPTY);
-        wattroff(game->window, A_REVERSE);
+    // draw red guy path, excluding start/end
+    for (int i = 0; i < game->rg.pathLen - 1; i++) {
+        paintCh('x', game->window, idxToRow(game->rg.path[i], game->numCols), idxToCol(game->rg.path[i], game->numCols), COLOR_CELL_EMPTY);
     }
 
     // draw red guy
+
 
     // draw player/cursor
     wrefresh(game->window);
