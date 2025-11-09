@@ -10,8 +10,8 @@
 #define COLOR_CELL_PERM_WALL_BG COLOR_WHITE
 #define COLOR_CELL_PERM_WALL_FG COLOR_WHITE
 #define CHAR_CELL_TEMP_WALL 'O'
-#define COLOR_CELL_TEMP_WALL_BG COLOR_WHITE
-#define COLOR_CELL_TEMP_WALL_FG COLOR_WHITE
+#define COLOR_CELL_TEMP_WALL_BG COLOR_CYAN
+#define COLOR_CELL_TEMP_WALL_FG COLOR_CELL_TEMP_WALL_BG
 #define CHAR_CELL_START 'S'
 #define COLOR_CELL_START_FG COLOR_BLUE
 #define COLOR_CELL_START_BG COLOR_CELL_START_FG
@@ -82,9 +82,11 @@ struct _game {
     int startPos, endPos; // lvl start/end locations
     Cell** lvl; // lvl data
     bool** adj; // lvl adjacency matrix
+    bool needsDraw; // whether game needs to be painted
     RedGuy rg; // red guy
     Player player; // player
     WINDOW* window; // ncurses window
+    WINDOW* statswindow;
 };
 
 void setCell(Game* game, int row, int col, int newType, int hp);

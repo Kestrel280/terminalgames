@@ -64,7 +64,7 @@ void gamePlay() {
             case GAME_STATE_EXIT: exit = true; break;
             default: break;
         }
-        gameDraw(&game);
+        if (game.needsDraw) gameDraw(&game);
     }
 
     // clean up
@@ -80,13 +80,14 @@ void gamePlay() {
 void gameHandleInput(Game* game) {
     int key = wgetch(game->window);
     switch (key) {
+        case ERR: return;
         case KEY_UP: game->player.curPos -= game->player.curPos >= game->numCols ? game->numCols : 0; break;
         case KEY_DOWN: game->player.curPos += game->player.curPos < (game->numCols * (game->numCols - 1)) ? game->numCols : 0; break;
         case KEY_RIGHT: game->player.curPos += ((game->player.curPos + 1) % game->numCols) == 0 ? 0 : 1; break;
         case KEY_LEFT: game->player.curPos -= ((game->player.curPos) % game->numCols) == 0 ? 0 : 1; break;
         case (int)' ': gameTryPlaceBarricade(game);
-        case ERR: break;
     }
+    game->needsDraw = true;
 }
 
 bool gameTryPlaceBarricade(Game* game) {
@@ -109,6 +110,7 @@ bool gameTryPlaceBarricade(Game* game) {
         game->rg.pathLen = pl;
         game->player.numBarricades--;
     }
+    game->needsDraw = true;
     return true;
 }
 
@@ -122,6 +124,7 @@ void gameInit(Game* game, int numRows, int numCols) {
     game->numCols = numCols;
     game->startPos = gridToIdx(numRows - 1, numCols / 2, numCols);
     game->endPos = gridToIdx(0, numCols / 2, numCols);
+    game->needsDraw = true;
 
     // initialize adj matrix
     game->adj = (bool**)malloc(sizeof(bool*) * game->numVerts);
@@ -171,8 +174,11 @@ void gameInit(Game* game, int numRows, int numCols) {
     // create game window
     int h, w;
     getmaxyx(stdscr, h, w);
-    game->window = newwin(numRows, numCols, (h - numRows) / 2, (w - numCols) / 2);
+    game->window = newwin(numRows + 4, numCols, (h - numRows) / 2, (w - numCols) / 2);
     keypad(game->window, TRUE);
+
+    // create stats window
+    game->statswindow = newwin(4, 50, (h + numRows) / 2, (w - numCols) / 2);
     clear();
     return;
 }
@@ -192,6 +198,8 @@ void gameTick(Game* game, uint64_t dtUs) {
         if (game->rg.curPos == game->endPos) gameOver(game);
         game->rg.basePatience -= game->rg.basePatience / 50;
         game->rg.patience += game->rg.basePatience;
+        game->score += 10000000l / game->rg.basePatience;
+        game->needsDraw = true;
     }
     return;
 }
@@ -254,7 +262,9 @@ void paintCh(char c, WINDOW* win, int row, int col, int colorpair) {
 }
 
 void gameDraw(Game* game) {
+    game->needsDraw = false;
     werase(game->window);
+    werase(game->statswindow);
     
     // first draw play field
     for (int row = 0; row < game->numRows; row++) {
@@ -270,7 +280,7 @@ void gameDraw(Game* game) {
     }
 
     // draw red guy path, excluding start/end
-    for (int i = 0; i < game->rg.pathLen - 1; i++) {
+    for (int i = game->rg.pathProgress; i < game->rg.pathLen - 1; i++) {
         paintCh(CHAR_REDGUY_PATH, game->window, idxToRow(game->rg.path[i], game->numCols), idxToCol(game->rg.path[i], game->numCols), COLOR_CELL_EMPTY);
     }
 
@@ -280,7 +290,13 @@ void gameDraw(Game* game) {
     // draw player/cursor
     paintCh(CHAR_PLAYER, game->window, idxToRow(game->player.curPos, game->numCols), idxToCol(game->player.curPos, game->numCols), COLOR_PLAYER);
 
+    // draw stats/score/etc; we've assigned 4 lines below the board for these (in gameInit)
+    mvwprintw(game->statswindow, 0, 0, "SCORE: %d", game->score);
+    mvwprintw(game->statswindow, 1, 0, "#BARRIERS: %d", game->player.numBarricades);
+    mvwprintw(game->statswindow, 2, 0, "SPEED: %5li", (10000000l) / game->rg.basePatience);
+
     wrefresh(game->window);
+    wrefresh(game->statswindow); 
     return;
 }
 
