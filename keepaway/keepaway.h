@@ -3,7 +3,7 @@
 
 #define PATHFIND pathfind_bfs
 
-#define CHAR_CELL_EMPTY '.'
+#define CHAR_CELL_EMPTY ' '
 #define COLOR_CELL_EMPTY_BG COLOR_BLACK
 #define COLOR_CELL_EMPTY_FG COLOR_WHITE
 #define CHAR_CELL_PERM_WALL 'X'
@@ -19,6 +19,7 @@
 #define COLOR_CELL_END_FG COLOR_YELLOW
 #define COLOR_CELL_END_BG COLOR_CELL_END_FG
 #define CHAR_REDGUY '#'
+#define CHAR_REDGUY_PATH '.'
 #define COLOR_REDGUY_FG COLOR_RED
 #define COLOR_REDGUY_BG COLOR_BLACK
 #define CHAR_PLAYER 'P'
@@ -94,6 +95,7 @@ void gameTick(Game* game, uint64_t dtUs);
 void gameDraw(Game* game);
 void gameOver(Game* game);
 void gameHandleInput(Game* game);
+bool gameTryPlaceBarricade(Game* game);
 void drawOverlay(const char* msg);
 
 int* pathfind_bfs(bool** adj, int startPos, int endPos, int numVerts, int* pathLen);

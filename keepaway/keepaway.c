@@ -47,7 +47,7 @@ void gamePlay() {
     uint64_t dtUs;
     gettimeofday(&tv_last, NULL);
     Game game;
-    gameInit(&game, 15, 15);
+    gameInit(&game, 25, 25);
     bool exit = false;
     clear();
     refresh();
@@ -84,9 +84,34 @@ void gameHandleInput(Game* game) {
         case KEY_DOWN: game->player.curPos += game->player.curPos < (game->numCols * (game->numCols - 1)) ? game->numCols : 0; break;
         case KEY_RIGHT: game->player.curPos += ((game->player.curPos + 1) % game->numCols) == 0 ? 0 : 1; break;
         case KEY_LEFT: game->player.curPos -= ((game->player.curPos) % game->numCols) == 0 ? 0 : 1; break;
+        case (int)' ': gameTryPlaceBarricade(game);
         case ERR: break;
     }
 }
+
+bool gameTryPlaceBarricade(Game* game) {
+    int pos = game->player.curPos;
+    int row = idxToRow(pos, game->numCols);
+    int col = idxToCol(pos, game->numCols);
+
+    if (game->player.numBarricades <= 0) return false; // no barricades to place
+    if (pos == game->rg.curPos) return false; // can't place on top of red guy
+    if (game->lvl[row][col].type != CELL_EMPTY) return false; // can only place on empty spaces
+    
+    setCell(game, row, col, CELL_TEMP_WALL, 0);
+    int pl;
+    int* newPath = PATHFIND(game->adj, game->rg.curPos, game->endPos, game->numVerts, &pl);
+    if (newPath == NULL) { setCell(game, row, col, CELL_EMPTY, 0); return false; } 
+    else { // can place a barricade: red guy still has path to exit. swap out his path for the new one
+        free(game->rg.path);
+        game->rg.path = newPath;
+        game->rg.pathProgress = 0;
+        game->rg.pathLen = pl;
+        game->player.numBarricades--;
+    }
+    return true;
+}
+
 
 void gameInit(Game* game, int numRows, int numCols) {
     // initialize basic board properties
@@ -132,7 +157,7 @@ void gameInit(Game* game, int numRows, int numCols) {
     */
 
     // initialize RedGuy
-    game->rg.basePatience = 1000000;
+    game->rg.basePatience = 1250000;
     game->rg.patience = game->rg.basePatience;
     game->rg.curPos = game->startPos;
     game->rg.path = PATHFIND(game->adj, game->startPos, game->endPos, game->numVerts, &(game->rg.pathLen));
@@ -141,7 +166,7 @@ void gameInit(Game* game, int numRows, int numCols) {
 
     // initialize Player
     game->player.curPos = game->endPos;
-    game->player.numBarricades = 10;
+    game->player.numBarricades = 100;
 
     // create game window
     int h, w;
@@ -165,7 +190,7 @@ void gameTick(Game* game, uint64_t dtUs) {
     if ((game->rg.patience -= (int64_t)dtUs) < 0) {
         game->rg.curPos = game->rg.path[game->rg.pathProgress++];
         if (game->rg.curPos == game->endPos) gameOver(game);
-        game->rg.basePatience -= game->rg.basePatience / 20;
+        game->rg.basePatience -= game->rg.basePatience / 50;
         game->rg.patience += game->rg.basePatience;
     }
     return;
@@ -246,7 +271,7 @@ void gameDraw(Game* game) {
 
     // draw red guy path, excluding start/end
     for (int i = 0; i < game->rg.pathLen - 1; i++) {
-        paintCh('x', game->window, idxToRow(game->rg.path[i], game->numCols), idxToCol(game->rg.path[i], game->numCols), COLOR_CELL_EMPTY);
+        paintCh(CHAR_REDGUY_PATH, game->window, idxToRow(game->rg.path[i], game->numCols), idxToCol(game->rg.path[i], game->numCols), COLOR_CELL_EMPTY);
     }
 
     // draw red guy
