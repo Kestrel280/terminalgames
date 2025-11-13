@@ -18,7 +18,7 @@ static inline int gridToIdx(int row, int col, int numCols) { return (col + (row 
 static inline int idxToRow(int idx, int numCols) { return idx / numCols; }
 static inline int idxToCol(int idx, int numCols) { return idx % numCols; }
 
-void setCell(Game* game, int row, int col, int newType, int hp) {
+void setCell(Game* game, int row, int col, int newType, int64_t hp) {
     int myIdx = gridToIdx(row, col, game->numCols);
     game->lvl[row][col].type = newType;
     game->lvl[row][col].hp = hp;
@@ -47,7 +47,7 @@ void gamePlay() {
     uint64_t dtUs;
     gettimeofday(&tv_last, NULL);
     Game game;
-    gameInit(&game, 25, 25);
+    gameInit(&game, 15, 50);
     bool exit = false;
     clear();
     refresh();
@@ -95,20 +95,22 @@ bool gameTryPlaceBarricade(Game* game) {
     int row = idxToRow(pos, game->numCols);
     int col = idxToCol(pos, game->numCols);
 
-    if (game->player.numBarricades <= 0) return false; // no barricades to place
+    if (game->player.numRemainingBarricades <= 0) return false; // no barricades to place
     if (pos == game->rg.curPos) return false; // can't place on top of red guy
     if (game->lvl[row][col].type != CELL_EMPTY) return false; // can only place on empty spaces
     
-    setCell(game, row, col, CELL_TEMP_WALL, 0);
+    setCell(game, row, col, CELL_TEMP_WALL, 12500000l);
     int pl;
     int* newPath = PATHFIND(game->adj, game->rg.curPos, game->endPos, game->numVerts, &pl);
-    if (newPath == NULL) { setCell(game, row, col, CELL_EMPTY, 0); return false; } 
+    if (newPath == NULL) { setCell(game, row, col, CELL_EMPTY, 0l); return false; } 
     else { // can place a barricade: red guy still has path to exit. swap out his path for the new one
         free(game->rg.path);
         game->rg.path = newPath;
         game->rg.pathProgress = 0;
         game->rg.pathLen = pl;
-        game->player.numBarricades--;
+        game->player.numRemainingBarricades--;
+        game->player.barricades[game->player.bEnd] = pos;
+        game->player.bEnd = (game->player.bEnd + 1) % game->player.numBarricades;
     }
     game->needsDraw = true;
     return true;
@@ -160,7 +162,7 @@ void gameInit(Game* game, int numRows, int numCols) {
     */
 
     // initialize RedGuy
-    game->rg.basePatience = 1250000;
+    game->rg.basePatience = 1500000;
     game->rg.patience = game->rg.basePatience;
     game->rg.curPos = game->startPos;
     game->rg.path = PATHFIND(game->adj, game->startPos, game->endPos, game->numVerts, &(game->rg.pathLen));
@@ -169,7 +171,11 @@ void gameInit(Game* game, int numRows, int numCols) {
 
     // initialize Player
     game->player.curPos = game->endPos;
-    game->player.numBarricades = 100;
+    game->player.numBarricades = 15;
+    game->player.numRemainingBarricades = game->player.numBarricades;
+    game->player.barricades = (int*)malloc(sizeof(int) * game->player.numBarricades);
+    game->player.bStart = 0;
+    game->player.bEnd = 0;
 
     // create game window
     int h, w;
@@ -189,6 +195,7 @@ void gameDestroy(Game* game) {
     for (int i = 0; i < game->numVerts; i++) free(game->adj[i]);
     free(game->adj);
     free(game->rg.path);
+    free(game->player.barricades);
     return;
 }
 
@@ -200,6 +207,30 @@ void gameTick(Game* game, uint64_t dtUs) {
         game->rg.patience += game->rg.basePatience;
         game->score += 10000000l / game->rg.basePatience;
         game->needsDraw = true;
+    }
+    
+    for (int bufIdx = game->player.bStart, dum = game->player.numBarricades; dum > game->player.numRemainingBarricades; dum--) {
+        int cellIdx = game->player.barricades[bufIdx];
+        int row = idxToRow(cellIdx, game->numCols);
+        int col = idxToCol(cellIdx, game->numCols);
+        int64_t oldHp = game->lvl[row][col].hp;
+        game->lvl[row][col].hp -= (int64_t)dtUs;
+        if ((oldHp / 1000000l) > (game->lvl[row][col].hp / 1000000l)) game->needsDraw = true; // to redraw timer on barrier
+        if (game->lvl[row][col].hp < 0l) { // wall expired
+            setCell(game, row, col, CELL_EMPTY, 0);
+            game->player.bStart = (game->player.bStart + 1) % game->player.numBarricades;
+            game->player.numRemainingBarricades++;
+            game->needsDraw = true;
+
+            // recalc rg path
+            int pl;
+            int* newPath = PATHFIND(game->adj, game->rg.curPos, game->endPos, game->numVerts, &pl);
+            free(game->rg.path);
+            game->rg.path = newPath;
+            game->rg.pathProgress = 0;
+            game->rg.pathLen = pl;
+        }
+        bufIdx = (bufIdx + 1) % game->player.numBarricades;
     }
     return;
 }
@@ -287,12 +318,22 @@ void gameDraw(Game* game) {
     // draw red guy
     paintCh(CHAR_REDGUY, game->window, idxToRow(game->rg.curPos, game->numCols), idxToCol(game->rg.curPos, game->numCols), COLOR_REDGUY);
 
+    // draw temp wall hps
+    for (int bufIdx = game->player.bStart, dum = game->player.numBarricades; dum > game->player.numRemainingBarricades; dum--) {
+        int cellIdx = game->player.barricades[bufIdx];
+        int row = idxToRow(cellIdx, game->numCols);
+        int col = idxToCol(cellIdx, game->numCols);
+        if (game->lvl[row][col].hp > 10000000l) continue; // >10s remaining, don't draw any char
+        paintCh('0' + (game->lvl[row][col].hp / 1000000l), game->window, row, col, COLOR_CELL_TEMP_WALL);
+        bufIdx = (bufIdx + 1) % game->player.numBarricades;
+    }
+
     // draw player/cursor
     paintCh(CHAR_PLAYER, game->window, idxToRow(game->player.curPos, game->numCols), idxToCol(game->player.curPos, game->numCols), COLOR_PLAYER);
 
     // draw stats/score/etc; we've assigned 4 lines below the board for these (in gameInit)
     mvwprintw(game->statswindow, 0, 0, "SCORE: %d", game->score);
-    mvwprintw(game->statswindow, 1, 0, "#BARRIERS: %d", game->player.numBarricades);
+    mvwprintw(game->statswindow, 1, 0, "#BARRIERS: %d", game->player.numRemainingBarricades);
     mvwprintw(game->statswindow, 2, 0, "SPEED: %5li", (10000000l) / game->rg.basePatience);
 
     wrefresh(game->window);

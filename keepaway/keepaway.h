@@ -9,9 +9,9 @@
 #define CHAR_CELL_PERM_WALL 'X'
 #define COLOR_CELL_PERM_WALL_BG COLOR_WHITE
 #define COLOR_CELL_PERM_WALL_FG COLOR_WHITE
-#define CHAR_CELL_TEMP_WALL 'O'
+#define CHAR_CELL_TEMP_WALL ' '
 #define COLOR_CELL_TEMP_WALL_BG COLOR_CYAN
-#define COLOR_CELL_TEMP_WALL_FG COLOR_CELL_TEMP_WALL_BG
+#define COLOR_CELL_TEMP_WALL_FG COLOR_BLACK
 #define CHAR_CELL_START 'S'
 #define COLOR_CELL_START_FG COLOR_BLUE
 #define COLOR_CELL_START_BG COLOR_CELL_START_FG
@@ -58,7 +58,7 @@ enum {
 
 struct _cell {
     int type;
-    int hp;
+    int64_t hp;
 };
 
 struct _redguy {
@@ -73,6 +73,10 @@ struct _redguy {
 struct _player {
     int curPos;
     int numBarricades;
+    int numRemainingBarricades;
+    int* barricades;
+    int bStart;
+    int bEnd;
 };
 
 struct _game {
@@ -89,7 +93,7 @@ struct _game {
     WINDOW* statswindow;
 };
 
-void setCell(Game* game, int row, int col, int newType, int hp);
+void setCell(Game* game, int row, int col, int newType, int64_t hp);
 void gamePlay();
 void gameInit(Game* game, int numRows, int numCols);
 void gameDestroy(Game* game);
