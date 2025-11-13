@@ -29,8 +29,8 @@ bool doMainMenu() {
     int nsizes = sizeof(sizes) / sizeof(char*);
 
     int choice = 0;
-    int difficulty = 0;
-    int size = 0;
+    int difficulty = 1;
+    int size = 1;
     bool portrait = false;
 
     int key;

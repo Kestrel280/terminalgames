@@ -47,7 +47,7 @@ void gamePlay(int nrows, int ncols, int difficulty) {
     uint64_t dtUs;
     gettimeofday(&tv_last, NULL);
     Game game;
-    gameInit(&game, nrows, ncols);
+    gameInit(&game, nrows, ncols, difficulty);
     bool exit = false;
     clear();
     refresh();
@@ -99,7 +99,7 @@ bool gameTryPlaceBarricade(Game* game) {
     if (pos == game->rg.curPos) return false; // can't place on top of red guy
     if (game->lvl[row][col].type != CELL_EMPTY) return false; // can only place on empty spaces
     
-    setCell(game, row, col, CELL_TEMP_WALL, 12500000l);
+    setCell(game, row, col, CELL_TEMP_WALL, 12500000l - (game->difficulty * 2500000l));
     int pl;
     int* newPath = PATHFIND(game->adj, game->rg.curPos, game->endPos, game->numVerts, &pl);
     if (newPath == NULL) { setCell(game, row, col, CELL_EMPTY, 0l); return false; } 
@@ -117,7 +117,7 @@ bool gameTryPlaceBarricade(Game* game) {
 }
 
 
-void gameInit(Game* game, int numRows, int numCols) {
+void gameInit(Game* game, int numRows, int numCols, int difficulty) {
     // initialize basic board properties
     game->state = GAME_STATE_ACTIVE;
     game->score = 0;
@@ -127,6 +127,7 @@ void gameInit(Game* game, int numRows, int numCols) {
     game->startPos = gridToIdx(numRows - 1, numCols / 2, numCols);
     game->endPos = gridToIdx(0, numCols / 2, numCols);
     game->needsDraw = true;
+    game->difficulty = difficulty;
 
     // initialize adj matrix
     game->adj = (bool**)malloc(sizeof(bool*) * game->numVerts);
@@ -162,7 +163,7 @@ void gameInit(Game* game, int numRows, int numCols) {
     */
 
     // initialize RedGuy
-    game->rg.basePatience = 1500000;
+    game->rg.basePatience = 1500000l - (difficulty * 250000l);
     game->rg.patience = game->rg.basePatience;
     game->rg.curPos = game->startPos;
     game->rg.path = PATHFIND(game->adj, game->startPos, game->endPos, game->numVerts, &(game->rg.pathLen));
@@ -170,8 +171,8 @@ void gameInit(Game* game, int numRows, int numCols) {
     DEBUG_PRINT("redguy initial path has length %d\n", game->rg.pathLen);
 
     // initialize Player
-    game->player.curPos = game->endPos;
-    game->player.numBarricades = 15;
+    game->player.curPos = gridToIdx(game->numRows / 2, game->numCols / 2, game->numCols);
+    game->player.numBarricades = (4 - difficulty) * (game->numVerts / 200);
     game->player.numRemainingBarricades = game->player.numBarricades;
     game->player.barricades = (int*)malloc(sizeof(int) * game->player.numBarricades);
     game->player.bStart = 0;
@@ -203,9 +204,10 @@ void gameTick(Game* game, uint64_t dtUs) {
     if ((game->rg.patience -= (int64_t)dtUs) < 0) {
         game->rg.curPos = game->rg.path[game->rg.pathProgress++];
         if (game->rg.curPos == game->endPos) gameOver(game);
-        game->rg.basePatience -= game->rg.basePatience / 50;
+        game->rg.basePatience -= game->rg.basePatience / (70 - (game->difficulty * 20));
+        game->rg.basePatience = game->rg.basePatience < 200000l ? 200000l : game->rg.basePatience; // cap rg speed at 5 moves per second
         game->rg.patience += game->rg.basePatience;
-        game->score += 10000000l / game->rg.basePatience;
+        game->score += 10000000l / game->rg.basePatience * (game->difficulty + 1);
         game->needsDraw = true;
     }
     

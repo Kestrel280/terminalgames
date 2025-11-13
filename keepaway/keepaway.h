@@ -83,7 +83,7 @@ struct _player {
 
 struct _game {
     int state; //GAME_STATE_... enum
-    int score;
+    int score, difficulty;
     int numRows, numCols, numVerts; // lvl metadata
     int startPos, endPos; // lvl start/end locations
     Cell** lvl; // lvl data
@@ -97,7 +97,7 @@ struct _game {
 
 void setCell(Game* game, int row, int col, int newType, int64_t hp);
 void gamePlay(int nrows, int ncols, int difficulty);
-void gameInit(Game* game, int numRows, int numCols);
+void gameInit(Game* game, int numRows, int numCols, int difficulty);
 void gameDestroy(Game* game);
 void gameTick(Game* game, uint64_t dtUs);
 void gameDraw(Game* game);
