@@ -42,12 +42,12 @@ void setCell(Game* game, int row, int col, int newType, int64_t hp) {
 }
 
 /* Game logic */
-void gamePlay() {
+void gamePlay(int nrows, int ncols, int difficulty) {
     struct timeval tv_now, tv_last;
     uint64_t dtUs;
     gettimeofday(&tv_last, NULL);
     Game game;
-    gameInit(&game, 15, 50);
+    gameInit(&game, nrows, ncols);
     bool exit = false;
     clear();
     refresh();
@@ -81,8 +81,8 @@ void gameHandleInput(Game* game) {
     int key = wgetch(game->window);
     switch (key) {
         case ERR: return;
-        case KEY_UP: game->player.curPos -= game->player.curPos >= game->numCols ? game->numCols : 0; break;
-        case KEY_DOWN: game->player.curPos += game->player.curPos < (game->numCols * (game->numCols - 1)) ? game->numCols : 0; break;
+        case KEY_UP: game->player.curPos -= game->player.curPos < game->numCols ? 0 : game->numCols; break;
+        case KEY_DOWN: game->player.curPos += game->player.curPos >= (game->numCols * (game->numRows - 1)) ? 0 : game->numCols; break;
         case KEY_RIGHT: game->player.curPos += ((game->player.curPos + 1) % game->numCols) == 0 ? 0 : 1; break;
         case KEY_LEFT: game->player.curPos -= ((game->player.curPos) % game->numCols) == 0 ? 0 : 1; break;
         case (int)' ': gameTryPlaceBarricade(game);

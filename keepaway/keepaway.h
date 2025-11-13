@@ -3,6 +3,8 @@
 
 #define PATHFIND pathfind_bfs
 
+#define GAME_BASE_SIZE 10
+
 #define CHAR_CELL_EMPTY ' '
 #define COLOR_CELL_EMPTY_BG COLOR_BLACK
 #define COLOR_CELL_EMPTY_FG COLOR_WHITE
@@ -94,7 +96,7 @@ struct _game {
 };
 
 void setCell(Game* game, int row, int col, int newType, int64_t hp);
-void gamePlay();
+void gamePlay(int nrows, int ncols, int difficulty);
 void gameInit(Game* game, int numRows, int numCols);
 void gameDestroy(Game* game);
 void gameTick(Game* game, uint64_t dtUs);
