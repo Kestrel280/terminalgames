@@ -1,7 +1,7 @@
 #ifndef KEEPAWAY_H
 #define KEEPAWAY_H
 
-#define PATHFIND pathfind_bfs
+#define PATHFIND pathfind_bfs2
 
 #define GAME_BASE_SIZE 10
 
@@ -107,5 +107,6 @@ bool gameTryPlaceBarricade(Game* game);
 void drawOverlay(const char* msg);
 
 int* pathfind_bfs(bool** adj, int startPos, int endPos, int numVerts, int* pathLen);
+int* pathfind_bfs2(bool** adj, int startPos, int endPos, int numVerts, int* pathLen);
 
 #endif

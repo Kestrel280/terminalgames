@@ -237,6 +237,44 @@ void gameTick(Game* game, uint64_t dtUs) {
     return;
 }
 
+int* pathfind_bfs2(bool** adj, int startPos, int endPos, int numVerts, int* pathLen) {
+    int parents[numVerts];
+    int q[numVerts], qs = 0, qe = 0;
+    for (int i = 0; i < numVerts; i++) parents[i] = -1;
+    
+    q[qe] = startPos;
+    qe++;
+
+    while (qs < qe) {
+        int cur = q[qs];
+        qs++;
+        DEBUG_PRINT("pathfind_bfs2 exploring node %d (tgt = %d)\n", cur, endPos);
+        for (int i = 0; i < numVerts; i++) { // check cur's entry in adj
+            if (i == cur) continue;
+            if (adj[cur][i] && (parents[i] == -1)) { // for each of cur's neighbors, check if it's been explored yet
+                q[qe] = i; // if not, add to queue and set its parent
+                qe++;
+                parents[i] = cur;
+                if (i == endPos) { // found target node
+                    int sz = 1;
+                    int parent = parents[i];
+                    while (parent != startPos) { sz++; parent = parents[parent]; }
+                    int* out = (int*)malloc(sizeof(int) * sz);
+                    for (int j = sz - 1; j >= 0; j--) {
+                        out[j] = i;
+                        i = parents[i];
+                    }
+                    *pathLen = sz;
+                    return out;
+                }
+            }
+        }
+    }
+
+    *pathLen = 0;
+    return NULL;
+}
+
 void gameOver(Game* game) {
     game->state = GAME_STATE_EXIT;
     return;
