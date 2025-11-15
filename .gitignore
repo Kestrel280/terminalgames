@@ -1,2 +1,9 @@
+# ignore everything w/o a file extension: ignore everything, then unignore anything with a file ext, then unignore dirs
+*
+!*.*
+!*/
+
+# ignore build files
 *.o
 *.exe
+
