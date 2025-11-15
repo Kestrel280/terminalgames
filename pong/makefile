@@ -1,11 +1,16 @@
+CFLAGS = 
+ifeq ($(OS), Windows_NT)
+	CFLAGS += -DNCURSES_STATIC
+endif
+
 default:
 	@echo "usage: make normal | make interp"
 
 normal: pong.c pong.h
-	gcc -Wall -lncurses pong.c -o pong
+	gcc -Wall pong.c -o pong -lncurses $(CFLAGS)
 
 interp: pong.c pong.h
-	gcc -Wall -DINTERPOLATE -lncurses pong.c -o pong
+	gcc -Wall -DINTERPOLATE pong.c -o pong -lncurses $(CFLAGS)
 
 clean:
-	rm pong *.o
+	rm -f pong *.o *.exe

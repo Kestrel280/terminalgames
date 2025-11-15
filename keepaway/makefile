@@ -1,3 +1,8 @@
+CFLAGS = 
+ifeq ($(OS), Windows_NT)
+	CFLAGS += -DNCURSES_STATIC
+endif
+
 all: keepaway
 
 %.o: %.c
@@ -7,10 +12,10 @@ all: keepaway
 	gcc -Wall -DDEBUG -c $< -o $@
 
 debug: main.odbg mainmenu.odbg keepaway.odbg
-	gcc -Wall *.odbg -o $@ -lncurses
+	gcc -Wall *.odbg -o $@ -lncurses $(CFLAGS)
 
 keepaway: main.o mainmenu.o keepaway.o
-	gcc -Wall *.o -o $@ -lncurses
+	gcc -Wall *.o -o $@ -lncurses $(CFLAGS)
 
 clean:
-	rm -f *.o *.odbg keepaway debug
+	rm -f *.o *.odbg *.exe keepaway debug
