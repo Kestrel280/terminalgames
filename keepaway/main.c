@@ -1,4 +1,8 @@
+#if defined(__CYGWIN__) || defined(_WIN64)
+#include <ncurses/ncurses.h>
+#else
 #include <ncurses.h>
+#endif
 #include "keepaway.h"
 #include "mainmenu.h"
 

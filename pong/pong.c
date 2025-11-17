@@ -1,5 +1,10 @@
-#include <stdio.h>
+#if defined(_WIN32) || defined(__CYGWIN__)
+#include <ncurses/ncurses.h>
+#else
 #include <ncurses.h>
+#endif
+
+#include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
 #include <stdint.h>
