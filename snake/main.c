@@ -17,12 +17,11 @@ int main(int argc, char* argv[]) {
     keypad(stdscr, TRUE);
     curs_set(0);
     
-    
     MenuOption mo;
-    while (mo = menu() != MENU_QUIT) {
+    while ((mo = menu()) != MENU_OPTION_QUIT) {
         switch (mo) {
-            case MENU_PLAY: gamePlay(); break;
-            case MENU_LEADERBOARD: leaderboardDisplay(); break;
+            case MENU_OPTION_PLAY: gamePlay(); break;
+            case MENU_OPTION_LEADERBOARD: leaderboardDisplay(); break;
         }
     }
     
