@@ -1,4 +1,4 @@
 #include <stdio.h>
 #include "snake.h"
 
-int doNothing() { printf("doNothing()\n"); }
+int gamePlay() { return 0; }

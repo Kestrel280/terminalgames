@@ -1,9 +1,15 @@
+CFLAGS = 
+ifeq ($(OS), Windows_NT)
+	CFLAGS += -DNCURSES_STATIC
+	#CFLAGS += -Incurses
+endif
+
 DEPSFILE = .deps
-SRCS = main.c snake.c
+SRCS = main.c snake.c leaderboard.c menu.c
 CFLAGS =
 
 snake: $(SRCS:%.c=%.o) # depends on .o files corresponding to all SRCS
-	gcc *.o -o snake
+	gcc *.o -o snake -lncurses $(CFLAGS)
 
 # generate dependency rules using gcc -MM: code.o depends on code.c and any non-system #includes in code.c
 $(DEPSFILE): $(SRCS)
@@ -13,7 +19,7 @@ include $(DEPSFILE)
 
 # standard obj rules as well: conflicts are just merged
 %.o: %.c
-	gcc -c $< -o $@ $(CFLAGS)
+	gcc -c $< -o $@
 
 
 clean:
