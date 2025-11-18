@@ -22,7 +22,8 @@ static inline int snakePush(Snake* q, int item) {
 static inline int snakePop(Snake* q) {
     if (q->size == 0) return -1;
     q->size--;
-    int item = q->data[q->tail++];
+    int item = q->data[q->tail];
+    q->tail = (q->tail + 1) % q->capacity;
     bitPackSet(q->bp, item, false);
     return item;
 }
@@ -61,8 +62,11 @@ int gamePlay() {
     for (int i = 0; i < game.snake.bp._numEls; i++) game.snake.bp._data[i] = (bitpack_el)0; // initialize all bits to 0 (false)
     for (int i = game.snake.tail; i <= game.snake.head; i++) bitPackSet(game.snake.bp, game.snake.data[i], true); // set all bits of snake
 
+    gameCreatePickup(&game);
+
     struct timeval tv_prev, tv_now;
     gettimeofday(&tv_prev, NULL);
+    srand((int)(tv_prev.tv_sec * 1000000ul + tv_prev.tv_usec));
     while (game.state != GAME_STATE_STOPPED) {
         gettimeofday(&tv_now, NULL);
         uint64_t dtUs = 1000000ul * ((uint64_t)tv_now.tv_sec - (uint64_t)tv_prev.tv_sec) + ((uint64_t)tv_now.tv_usec - (uint64_t)tv_prev.tv_usec);
@@ -102,7 +106,15 @@ void gameTick(Game* game, uint64_t dtUs) {
         case COLLISION_NONE: break;
         case COLLISION_WALL: gameOver(game, snakeHeadNextPos); return;
         case COLLISION_SELF: gameOver(game, snakeHeadNextPos); return;
-        case COLLISION_PICKUP: break;
+        case COLLISION_PICKUP: { // manually duplicate tail
+            game->snake.size++;
+            int origTail = game->snake.tail;
+            game->snake.tail = origTail - 1;
+            if (game->snake.tail < 0) game->snake.tail = game->width * game->height - 1;
+            game->snake.data[game->snake.tail] = game->snake.data[origTail];
+            gameCreatePickup(game);
+            break;
+        }
     }
 
     snakePush(&game->snake, snakeHeadNextPos);
@@ -150,6 +162,9 @@ Collision gameTryCollision(Game* game, int pos) {
     if ((pos + 1) % game->width == 0) return COLLISION_WALL; // right edge
 
     if (bitPackGet(game->snake.bp, pos)) return COLLISION_SELF;
+
+    if (pos == game->pickupPos) return COLLISION_PICKUP;
+
     return COLLISION_NONE;
 }
 
@@ -170,10 +185,13 @@ void gameDraw(Game* game) {
     for (int i = 0; i <= game->height; i++) paintCh(game->window, gfxChars[CG_WALL], CG_WALL, i, game->width - 1);
 
     // draw snake
-    for (int i = game->snake.tail; i < game->snake.head; i = (i + 1) % game->snake.capacity) {
+    for (int i = game->snake.tail; i != game->snake.head; i = (i + 1) % game->snake.capacity) {
         paintCh(game->window, gfxChars[CG_SNAKE], CG_SNAKE, idxToRow(game->snake.data[i], game->width), idxToCol(game->snake.data[i], game->width));
     }
     paintCh(game->window, gfxChars[CG_SNAKEHEAD], CG_SNAKEHEAD, idxToRow(game->snake.data[game->snake.head], game->width), idxToCol(game->snake.data[game->snake.head], game->width));
+
+    // draw pickup
+    paintCh(game->window, gfxChars[CG_PICKUP], CG_PICKUP, idxToRow(game->pickupPos, game->width), idxToCol(game->pickupPos, game->width));
 
     wrefresh(game->window);
     return;
@@ -182,5 +200,17 @@ void gameDraw(Game* game) {
 void gameOver(Game* game, int positionOfFailure) {
     wprintw(game->window, "game over");
     game->state = GAME_STATE_STOPPED;
+    return;
+}
+
+void gameCreatePickup(Game* game) {
+    int idx;
+    while (1) {
+        idx = rand() % (game->height * game->width);
+        if ((idx / game->width == 0) || (idx % game->width == 0) || (idx / game->width == game->height - 1) || ((idx + 1) % game->width == 0)) continue; // don't spawn in wall
+        if (bitPackGet(game->snake.bp, idx)) continue; // don't spawn inside snake
+        break;
+    }
+    game->pickupPos = idx;
     return;
 }

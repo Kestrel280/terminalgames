@@ -4,7 +4,7 @@
 #include <ncurses.h>
 #include "bitpack.h"
 
-#define SNAKE_COOLDOWN 250000l
+#define SNAKE_COOLDOWN 125000l
 
 typedef int GameState;
 typedef int Direction;
@@ -62,6 +62,7 @@ struct _game {
     int64_t timeToNextTickUs;
     Snake snake;
     WINDOW* window;
+    int pickupPos;
     bool needsDraw;
 };
 
@@ -72,5 +73,6 @@ void gameTrySetDir(Game* game, Direction newDir);
 Collision gameTryCollision(Game* game, int pos);
 void gameDraw(Game* game);
 void gameOver(Game* game, int positionOfFailure);
+void gameCreatePickup(Game* game);
 
 #endif
