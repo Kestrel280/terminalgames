@@ -5,7 +5,7 @@ ifeq ($(OS), Windows_NT)
 endif
 
 DEPSFILE = .deps
-SRCS = main.c snake.c leaderboard.c menu.c
+SRCS = main.c snake.c leaderboard.c menu.c bitpack.c
 CFLAGS =
 
 snake: $(SRCS:%.c=%.o) # depends on .o files corresponding to all SRCS

@@ -16,12 +16,15 @@ static inline int snakePush(Snake* q, int item) {
     q->size++;
     q->head = (q->head + 1) % q->capacity;
     q->data[q->head] = item;
+    bitPackSet(q->bp, item, true);
     return 1;
 }
 static inline int snakePop(Snake* q) {
     if (q->size == 0) return -1;
     q->size--;
-    return q->data[q->tail++];
+    int item = q->data[q->tail++];
+    bitPackSet(q->bp, item, false);
+    return item;
 }
 
 int gamePlay() {
@@ -29,8 +32,8 @@ int gamePlay() {
     refresh();
     Game game;
 
-    game.width = 15;
-    game.height = 15;
+    game.width = 14;
+    game.height = 18;
     
     int screenMaxWidth, screenMaxHeight;
     getmaxyx(stdscr, screenMaxHeight, screenMaxWidth);
@@ -43,13 +46,20 @@ int gamePlay() {
     game.timeToNextTickUs = SNAKE_COOLDOWN;
     game.curDir = SOUTH;
     game.snake.data = (int*)malloc(sizeof(int) * game.width * game.height);
-    game.snake.size = 3;
+    game.snake.size = 5;
     game.snake.capacity = game.width * game.height;
-    game.snake.head = 2;
+    game.snake.head = 4;
     game.snake.tail = 0;
-    game.snake.data[2] = gridToIdx(game.height / 2, game.width / 2, game.width);
+    game.snake.data[4] = gridToIdx(game.height / 2, game.width / 2, game.width);
+    game.snake.data[3] = game.snake.data[4] - game.width;
+    game.snake.data[2] = game.snake.data[3] - game.width;
     game.snake.data[1] = game.snake.data[2] - game.width;
     game.snake.data[0] = game.snake.data[1] - game.width;
+    game.snake.bp.bitsCapacity = game.snake.capacity; // initialize snake pitback
+    game.snake.bp._numEls = (game.snake.capacity + (sizeof(bitpack_el) - 1)) / sizeof(bitpack_el); // # of game cells divided by sizeof(bitpack_el), rounded up
+    game.snake.bp._data = (bitpack_el*)malloc(sizeof(bitpack_el) * game.snake.bp._numEls); // allocate bitpack data
+    for (int i = 0; i < game.snake.bp._numEls; i++) game.snake.bp._data[i] = (bitpack_el)0; // initialize all bits to 0 (false)
+    for (int i = game.snake.tail; i <= game.snake.head; i++) bitPackSet(game.snake.bp, game.snake.data[i], true); // set all bits of snake
 
     struct timeval tv_prev, tv_now;
     gettimeofday(&tv_prev, NULL);
@@ -68,6 +78,7 @@ int gamePlay() {
     }
 
     free(game.snake.data);
+    free(game.snake.bp._data);
     return 0;
 }
 
@@ -137,6 +148,8 @@ Collision gameTryCollision(Game* game, int pos) {
     if (pos / game->width == game->height - 1) return COLLISION_WALL; // bottom edge
     if (pos % game->width == 0) return COLLISION_WALL; // left edge
     if ((pos + 1) % game->width == 0) return COLLISION_WALL; // right edge
+
+    if (bitPackGet(game->snake.bp, pos)) return COLLISION_SELF;
     return COLLISION_NONE;
 }
 

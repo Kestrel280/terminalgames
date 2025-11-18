@@ -1,0 +1,5 @@
+bp numEls = 32
+bitPackSet bit = 105, idx = 13, subbit = 1
+bitPackSet bit = 119, idx = 14, subbit = 7
+bitPackSet bit = 133, idx = 16, subbit = 5
+0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 80 | 0 | 20 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 

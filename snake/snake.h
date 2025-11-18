@@ -2,6 +2,7 @@
 #define SNAKE_H
 
 #include <ncurses.h>
+#include "bitpack.h"
 
 #define SNAKE_COOLDOWN 250000l
 
@@ -50,6 +51,7 @@ struct _snake {
     int* data;
     int size, capacity;
     int head, tail;
+    BitPack bp;
 };
 
 // Game
