@@ -52,21 +52,17 @@ int gamePlay() {
     game.snake.head = 4;
     game.snake.tail = 0;
     game.snake.data[4] = gridToIdx(game.height / 2, game.width / 2, game.width);
-    game.snake.data[3] = game.snake.data[4] - game.width;
-    game.snake.data[2] = game.snake.data[3] - game.width;
-    game.snake.data[1] = game.snake.data[2] - game.width;
-    game.snake.data[0] = game.snake.data[1] - game.width;
+    for (int i = 3; i >= 0; i--) game.snake.data[i] = game.snake.data[i + 1] - game.width;
     game.snake.bp.bitsCapacity = game.snake.capacity; // initialize snake pitback
     game.snake.bp._numEls = (game.snake.capacity + (sizeof(bitpack_el) - 1)) / sizeof(bitpack_el); // # of game cells divided by sizeof(bitpack_el), rounded up
     game.snake.bp._data = (bitpack_el*)malloc(sizeof(bitpack_el) * game.snake.bp._numEls); // allocate bitpack data
     for (int i = 0; i < game.snake.bp._numEls; i++) game.snake.bp._data[i] = (bitpack_el)0; // initialize all bits to 0 (false)
     for (int i = game.snake.tail; i <= game.snake.head; i++) bitPackSet(game.snake.bp, game.snake.data[i], true); // set all bits of snake
 
-    gameCreatePickup(&game);
-
     struct timeval tv_prev, tv_now;
     gettimeofday(&tv_prev, NULL);
-    srand((int)(tv_prev.tv_sec * 1000000ul + tv_prev.tv_usec));
+    srand(tv_prev.tv_sec * tv_prev.tv_usec);
+    gameCreatePickup(&game);
     while (game.state != GAME_STATE_STOPPED) {
         gettimeofday(&tv_now, NULL);
         uint64_t dtUs = 1000000ul * ((uint64_t)tv_now.tv_sec - (uint64_t)tv_prev.tv_sec) + ((uint64_t)tv_now.tv_usec - (uint64_t)tv_prev.tv_usec);
