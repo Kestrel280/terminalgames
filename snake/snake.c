@@ -14,7 +14,7 @@ static inline int idxToCol(int idx, int numCols) { return idx % numCols; }
 static inline int snakePush(Snake* q, int item) {
     if (q->size + 1 > q->capacity) return -1;
     q->size++;
-    q->head = (q->head + 1) % q->size;
+    q->head = (q->head + 1) % q->capacity;
     q->data[q->head] = item;
     return 1;
 }
@@ -43,17 +43,19 @@ int gamePlay() {
     game.timeToNextTickUs = SNAKE_COOLDOWN;
     game.curDir = SOUTH;
     game.snake.data = (int*)malloc(sizeof(int) * game.width * game.height);
-    game.snake.size = 1;
+    game.snake.size = 3;
     game.snake.capacity = game.width * game.height;
-    game.snake.head = 0;
+    game.snake.head = 2;
     game.snake.tail = 0;
-    game.snake.data[0] = gridToIdx(game.height / 2, game.width / 2, game.width);
+    game.snake.data[2] = gridToIdx(game.height / 2, game.width / 2, game.width);
+    game.snake.data[1] = game.snake.data[2] - game.width;
+    game.snake.data[0] = game.snake.data[1] - game.width;
 
     struct timeval tv_prev, tv_now;
     gettimeofday(&tv_prev, NULL);
     while (game.state != GAME_STATE_STOPPED) {
         gettimeofday(&tv_now, NULL);
-        uint64_t dtUs = 1000000ul * ((uint64_t)tv_now.tv_usec - (uint64_t)tv_prev.tv_usec) + ((uint64_t)tv_now.tv_sec - (uint64_t)tv_prev.tv_sec);
+        uint64_t dtUs = 1000000ul * ((uint64_t)tv_now.tv_sec - (uint64_t)tv_prev.tv_sec) + ((uint64_t)tv_now.tv_usec - (uint64_t)tv_prev.tv_usec);
         tv_prev = tv_now;
 
         gameHandleInput(&game);
@@ -70,10 +72,10 @@ int gamePlay() {
 }
 
 void gameTick(Game* game, uint64_t dtUs) {
-    game->timeToNextTickUs -= dtUs;
-    if (game->timeToNextTickUs >= 0) return;
-    
+    game->timeToNextTickUs -= (int64_t)dtUs;
+    if (game->timeToNextTickUs >= 0l) return;
     game->timeToNextTickUs += SNAKE_COOLDOWN;
+    
     int snakeHeadCurRow = idxToRow(game->snake.data[game->snake.head], game->width);
     int snakeHeadCurCol = idxToCol(game->snake.data[game->snake.head], game->width);
     int snakeHeadNextPos;
@@ -87,13 +89,15 @@ void gameTick(Game* game, uint64_t dtUs) {
     Collision col = gameTryCollision(game, snakeHeadNextPos);
     switch (col) {
         case COLLISION_NONE: break;
-        case COLLISION_WALL: break;
-        case COLLISION_SELF: break;
+        case COLLISION_WALL: gameOver(game, snakeHeadNextPos); return;
+        case COLLISION_SELF: gameOver(game, snakeHeadNextPos); return;
         case COLLISION_PICKUP: break;
     }
 
     snakePush(&game->snake, snakeHeadNextPos);
     snakePop(&game->snake);
+
+    game->needsDraw = true;
 
     return;
 }
@@ -110,11 +114,29 @@ void gameHandleInput(Game* game) {
     return;
 }
 
+// do not allow snake to double back on itself. it can turn into an older segment of itself or a wall,
+//  but it cannot turn 180 degrees
 void gameTrySetDir(Game* game, Direction newDir) {
+    if (game->snake.size == 1) { game->curDir = newDir; return; }
+    int snakePenultimateHead = game->snake.data[(game->snake.head - 1 + game->snake.capacity) % game->snake.capacity];
+    int attemptedNextPos;
+    switch (newDir) { // calculating attemptedNextPos this way LOOKS like it could "wrap" the side of the board inappropriately; but, because snake is inner-bounded by the walls, this can't happen
+                      // it also doesn't actually MATTER, because this value is ONLY used for checking equality with snakePenultimateHead; we're not actually going to try and move to this position
+        case NORTH: attemptedNextPos = game->snake.data[game->snake.head] - game->width; break;
+        case SOUTH: attemptedNextPos = game->snake.data[game->snake.head] + game->width; break;
+        case EAST: attemptedNextPos = game->snake.data[game->snake.head] + 1; break;
+        case WEST: attemptedNextPos = game->snake.data[game->snake.head] - 1; break;
+    }
+    if (attemptedNextPos == snakePenultimateHead) return;
+    else game->curDir = newDir;
     return;
 }
 
 Collision gameTryCollision(Game* game, int pos) {
+    if (pos / game->width == 0) return COLLISION_WALL; // top edge
+    if (pos / game->width == game->height - 1) return COLLISION_WALL; // bottom edge
+    if (pos % game->width == 0) return COLLISION_WALL; // left edge
+    if ((pos + 1) % game->width == 0) return COLLISION_WALL; // right edge
     return COLLISION_NONE;
 }
 
@@ -134,6 +156,18 @@ void gameDraw(Game* game) {
     for (int i = 0; i <= game->height; i++) paintCh(game->window, gfxChars[CG_WALL], CG_WALL, i, 0);
     for (int i = 0; i <= game->height; i++) paintCh(game->window, gfxChars[CG_WALL], CG_WALL, i, game->width - 1);
 
+    // draw snake
+    for (int i = game->snake.tail; i < game->snake.head; i = (i + 1) % game->snake.capacity) {
+        paintCh(game->window, gfxChars[CG_SNAKE], CG_SNAKE, idxToRow(game->snake.data[i], game->width), idxToCol(game->snake.data[i], game->width));
+    }
+    paintCh(game->window, gfxChars[CG_SNAKEHEAD], CG_SNAKEHEAD, idxToRow(game->snake.data[game->snake.head], game->width), idxToCol(game->snake.data[game->snake.head], game->width));
+
     wrefresh(game->window);
+    return;
+}
+
+void gameOver(Game* game, int positionOfFailure) {
+    wprintw(game->window, "game over");
+    game->state = GAME_STATE_STOPPED;
     return;
 }

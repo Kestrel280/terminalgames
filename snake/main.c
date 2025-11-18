@@ -11,6 +11,8 @@ void initColors() {
     start_color();
     REGISTER_PIXEL(CG_SPACE, COLOR_WHITE, COLOR_WHITE, ' ');
     REGISTER_PIXEL(CG_WALL, COLOR_RED, COLOR_GREEN, '#');
+    REGISTER_PIXEL(CG_SNAKE, COLOR_BLACK, COLOR_CYAN, '.');
+    REGISTER_PIXEL(CG_SNAKEHEAD, COLOR_BLACK, COLOR_CYAN, 'o');
 }
 
 int main(int argc, char* argv[]) {

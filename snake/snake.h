@@ -3,7 +3,7 @@
 
 #include <ncurses.h>
 
-#define SNAKE_COOLDOWN 1000000l
+#define SNAKE_COOLDOWN 250000l
 
 typedef int GameState;
 typedef int Direction;
@@ -57,7 +57,7 @@ struct _game {
     GameState state;
     Direction curDir;
     int height, width;
-    uint64_t timeToNextTickUs;
+    int64_t timeToNextTickUs;
     Snake snake;
     WINDOW* window;
     bool needsDraw;
@@ -69,5 +69,6 @@ void gameHandleInput(Game* game);
 void gameTrySetDir(Game* game, Direction newDir);
 Collision gameTryCollision(Game* game, int pos);
 void gameDraw(Game* game);
+void gameOver(Game* game, int positionOfFailure);
 
 #endif
