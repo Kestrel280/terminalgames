@@ -4,9 +4,13 @@
 #include "menu.h"
 #include "leaderboard.h"
 
+#define REGISTER_PIXEL(id, fg, bg, c) init_pair(id, fg, bg); gfxChars[id] = c;
+extern char gfxChars[];
 void initColors() {
     if (has_colors() == false) { fprintf(stderr, "failed to init colors\n"); return; }
     start_color();
+    REGISTER_PIXEL(CG_SPACE, COLOR_WHITE, COLOR_WHITE, ' ');
+    REGISTER_PIXEL(CG_WALL, COLOR_RED, COLOR_GREEN, '#');
 }
 
 int main(int argc, char* argv[]) {
