@@ -63,7 +63,7 @@ int gamePlay() {
     gettimeofday(&tv_prev, NULL);
     srand(tv_prev.tv_sec * tv_prev.tv_usec);
     gameCreatePickup(&game);
-    while (game.state != GAME_STATE_STOPPED) {
+    while (game.state != GAME_STATE_FINISHED) {
         gettimeofday(&tv_now, NULL);
         uint64_t dtUs = 1000000ul * ((uint64_t)tv_now.tv_sec - (uint64_t)tv_prev.tv_sec) + ((uint64_t)tv_now.tv_usec - (uint64_t)tv_prev.tv_usec);
         tv_prev = tv_now;
@@ -72,8 +72,8 @@ int gamePlay() {
 
         switch (game.state) {
             case GAME_STATE_ACTIVE: gameTick(&game, dtUs); break;
+            case GAME_STATE_DYING: gameOver(&game, dtUs); break;
         }
-
         if (game.needsDraw) gameDraw(&game);
     }
 
@@ -100,8 +100,8 @@ void gameTick(Game* game, uint64_t dtUs) {
     Collision col = gameTryCollision(game, snakeHeadNextPos);
     switch (col) {
         case COLLISION_NONE: break;
-        case COLLISION_WALL: gameOver(game, snakeHeadNextPos); return;
-        case COLLISION_SELF: gameOver(game, snakeHeadNextPos); return;
+        case COLLISION_WALL: // fallthrough
+        case COLLISION_SELF: game->state = GAME_STATE_DYING; game->needsDraw = true; return;
         case COLLISION_PICKUP: { // manually duplicate tail
             game->snake.size++;
             int origTail = game->snake.tail;
@@ -182,7 +182,7 @@ void gameDraw(Game* game) {
 
     // draw snake
     for (int i = game->snake.tail; i != game->snake.head; i = (i + 1) % game->snake.capacity) {
-        paintCh(game->window, gfxChars[CG_SNAKE], CG_SNAKE, idxToRow(game->snake.data[i], game->width), idxToCol(game->snake.data[i], game->width));
+        paintCh(game->window, gfxChars[CG_SNAKE], game->state == GAME_STATE_DYING ? CG_SNAKEDEAD : CG_SNAKE, idxToRow(game->snake.data[i], game->width), idxToCol(game->snake.data[i], game->width));
     }
     paintCh(game->window, gfxChars[CG_SNAKEHEAD], CG_SNAKEHEAD, idxToRow(game->snake.data[game->snake.head], game->width), idxToCol(game->snake.data[game->snake.head], game->width));
 
@@ -190,12 +190,6 @@ void gameDraw(Game* game) {
     paintCh(game->window, gfxChars[CG_PICKUP], CG_PICKUP, idxToRow(game->pickupPos, game->width), idxToCol(game->pickupPos, game->width));
 
     wrefresh(game->window);
-    return;
-}
-
-void gameOver(Game* game, int positionOfFailure) {
-    wprintw(game->window, "game over");
-    game->state = GAME_STATE_STOPPED;
     return;
 }
 
@@ -210,3 +204,17 @@ void gameCreatePickup(Game* game) {
     game->pickupPos = idx;
     return;
 }
+
+void gameOver(Game* game, uint64_t dtUs) {
+    static int64_t baseTimeToDecayUs = (int64_t)400000;
+    static int64_t timeToNextDecayUs = (int64_t)0;
+    timeToNextDecayUs -= (int64_t)dtUs;
+    if (timeToNextDecayUs < 0) {
+        if (game->snake.size <= 1) game->state = GAME_STATE_FINISHED;
+        timeToNextDecayUs += baseTimeToDecayUs;
+        baseTimeToDecayUs = baseTimeToDecayUs - (baseTimeToDecayUs / 10);
+        int item = snakePop(&game->snake);
+        game->needsDraw = true;
+    }
+}
+

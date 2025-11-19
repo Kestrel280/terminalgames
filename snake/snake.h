@@ -16,8 +16,8 @@ typedef struct _game Game;
 // GameState
 enum {
     GAME_STATE_ACTIVE,
-    GAME_STATE_LOST,
-    GAME_STATE_STOPPED,
+    GAME_STATE_DYING,
+    GAME_STATE_FINISHED,
     GAME_STATE_META_NUM_STATES
 };
 
@@ -42,6 +42,7 @@ enum {
     CG_SPACE,
     CG_WALL,
     CG_SNAKE,
+    CG_SNAKEDEAD,
     CG_SNAKEHEAD,
     CG_PICKUP,
     CG_META_NUM_CGS
@@ -72,7 +73,7 @@ void gameHandleInput(Game* game);
 void gameTrySetDir(Game* game, Direction newDir);
 Collision gameTryCollision(Game* game, int pos);
 void gameDraw(Game* game);
-void gameOver(Game* game, int positionOfFailure);
 void gameCreatePickup(Game* game);
+void gameOver(Game* game, uint64_t dtUs);
 
 #endif
