@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <microhttpd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -44,32 +45,45 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
     // MHD_get_connection_values() -> 3rd argument is a fn pointer; calls this fn for each key-value pair in the request
     //MHD_get_connection_values(connection, MHD_HEADER_KIND, &printKey, NULL);
 
-    // GET request
-    if (strcmp(method, "GET") == 0) {
+    // check that they're accessing /leaderboards/; if not, respond with error
+    if (strncmp(url, _leaderboardDir, strlen(_leaderboardDir)) != 0) {
+        QUEUE_ERROR_RESPONSE();
+        LOG("... improper access to leaderboards directory\n");
+        return MHD_YES;
+    }
 
-        // check that they're accessing /leaderboards/; if not, respond with error
-        if (strncmp(url, _leaderboardDir, strlen(_leaderboardDir)) != 0) {
-            QUEUE_ERROR_RESPONSE();
-            LOG("... improper access to leaderboards directory\n");
-            return MHD_YES;
-        }
+    // get game they're trying to access and construct uri to leaderboard file
+    const char* game = MHD_lookup_connection_value(connection, MHD_HEADER_KIND, "game");
+    if (game == NULL) {
+        QUEUE_ERROR_RESPONSE();
+        LOG("--ERROR-- no 'game' header specified in request to API\n");
+        return MHD_YES;
+    }
+    char* lbUri = (malloc)(sizeof(char) * (1 + strlen(_leaderboardDir) + strlen(game)));
+    strcpy(lbUri, _leaderboardDir);
+    strcat(lbUri, game);
+    printf("lbUri: %s\n", lbUri);
 
-        // open requested leaderboard file; if not found, respond with error
-        int fd = open(url+1, O_RDONLY, NULL);
-        if (fd == -1) {
-            QUEUE_ERROR_RESPONSE();
-            LOG("... file not found in leaderboards dir\n");
-            return MHD_YES;
-        }
-        struct stat fdStat;
-        fstat(fd, &fdStat);
+    // open requested leaderboard file; if not found, respond with error
+    int fd = open(lbUri, O_RDONLY, NULL);
+    if (fd == -1) {
+        QUEUE_ERROR_RESPONSE();
+        LOG("... file not found in leaderboards dir\n");
+        return MHD_YES;
+    }
+    struct stat fdStat;
+    fstat(fd, &fdStat);
+    printf("fd: %d\n", fd);
 
+    if (strcmp(method, "GET") == 0) { // --- GET ---
         // respond with file contents
         response = MHD_create_response_from_fd_at_offset64((size_t)fdStat.st_size, fd, 0);
         MHD_add_response_header(response, "Content-Type", "text/csv");
         int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
         MHD_destroy_response(response);
         return ret;
+    } else if (strcmp(method, "POST") == 0) { // --- POST ---
+        printf("asdf");
     }
 
     // not a GET request; error (for now)
