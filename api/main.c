@@ -10,11 +10,10 @@
 
 #define LOG(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
 #define PORT 10279
-#define QUEUE_ERROR_RESPONSE() do { struct MHD_Response* __response = MHD_create_response_from_buffer(strlen(errstr), (void*)errstr, MHD_RESPMEM_PERSISTENT);\
+#define QUEUE_ERROR_RESPONSE(ERRMSG) do { struct MHD_Response* __response = MHD_create_response_from_buffer(strlen(ERRMSG), (void*)ERRMSG, MHD_RESPMEM_PERSISTENT);\
                                 MHD_queue_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, __response);\
                                 MHD_destroy_response(__response); } while(0)
 const char* _leaderboardDir = "/leaderboards";
-const char* errstr = "internal server error occurred";
 
 
 // GNU libmicrohttpd tutorial
@@ -46,28 +45,33 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
     //MHD_get_connection_values(connection, MHD_HEADER_KIND, &printKey, NULL);
 
     // check that they're accessing /leaderboards/; if not, respond with error
+    // normally, traffic can only reach this server via the nginx reverse proxy...
+    //  but accessing it directly via port would allow arbitrary url payload, so we need to safeguard against that
     if (strncmp(url, _leaderboardDir, strlen(_leaderboardDir)) != 0) {
-        QUEUE_ERROR_RESPONSE();
+        QUEUE_ERROR_RESPONSE("improper attempt to access leaderboards API");
         LOG("... improper access to leaderboards directory\n");
         return MHD_YES;
     }
 
-    // get game they're trying to access and construct uri to leaderboard file
+    // get game they're trying to access and construct uri to leaderboard file: "{_leaderboardDir}/{game}.csv"
     const char* game = MHD_lookup_connection_value(connection, MHD_HEADER_KIND, "game");
     if (game == NULL) {
-        QUEUE_ERROR_RESPONSE();
+        QUEUE_ERROR_RESPONSE("no game header specified in leaderboards API request");
         LOG("--ERROR-- no 'game' header specified in request to API\n");
         return MHD_YES;
     }
-    char* lbUri = (malloc)(sizeof(char) * (1 + strlen(_leaderboardDir) + strlen(game)));
-    strcpy(lbUri, _leaderboardDir);
-    strcat(lbUri, game);
+    char* lbUri = (malloc)(sizeof(char) * (1 + strlen("/.csv") + strlen(_leaderboardDir) + strlen(game)));
+    char* _p = lbUri;
+    for (int i = 0; i < strlen(_leaderboardDir); i++) *(_p++) = _leaderboardDir[i];
+    *(_p++) = '/';
+    for (int i = 0; i < strlen(game); i++) *(_p++) = game[i];
+    strcpy(_p, ".csv");
     printf("lbUri: %s\n", lbUri);
 
     // open requested leaderboard file; if not found, respond with error
-    int fd = open(lbUri, O_RDONLY, NULL);
+    int fd = open(lbUri+1, O_RDONLY, NULL); // lbUri contains leading /
     if (fd == -1) {
-        QUEUE_ERROR_RESPONSE();
+        QUEUE_ERROR_RESPONSE("invalid game specified in leaderboards API request");
         LOG("... file not found in leaderboards dir\n");
         return MHD_YES;
     }
@@ -87,7 +91,7 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
     }
 
     // not a GET request; error (for now)
-    QUEUE_ERROR_RESPONSE();
+    QUEUE_ERROR_RESPONSE("unknown error accessing leaderboards API");
     return MHD_YES;
 }
 
