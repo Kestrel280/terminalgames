@@ -29,7 +29,7 @@ struct _handlerParam {
 
 // for use with MHD_get_connection_values: simply prints header pairs
 enum MHD_Result printKey(void* cls, enum MHD_ValueKind kind, const char* key, const char* value) {
-    printf("%s: %s\n", key, value);
+    LOG("%s: %s\n", key, value);
     return MHD_YES;
 }
 
@@ -39,7 +39,7 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
                         size_t* upload_data_size, void** req_cls) {
     struct MHD_Response* response;
 
-    printf("New '%s' request for '%s' using version '%s'\n", method, url, version);
+    LOG("New '%s' request for '%s' using version '%s'\n", method, url, version);
 
     // MHD_get_connection_values() -> 3rd argument is a fn pointer; calls this fn for each key-value pair in the request
     //MHD_get_connection_values(connection, MHD_HEADER_KIND, &printKey, NULL);
@@ -66,7 +66,7 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
     *(_p++) = '/';
     for (int i = 0; i < strlen(game); i++) *(_p++) = game[i];
     strcpy(_p, ".csv");
-    printf("lbUri: %s\n", lbUri);
+    LOG("lbUri: %s\n", lbUri);
 
     // open requested leaderboard file; if not found, respond with error
     int fd = open(lbUri+1, O_RDONLY, NULL); // lbUri contains leading /
@@ -77,7 +77,7 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
     }
     struct stat fdStat;
     fstat(fd, &fdStat);
-    printf("fd: %d\n", fd);
+    LOG("fd: %d\n", fd);
 
     if (strcmp(method, "GET") == 0) { // --- GET ---
         // respond with file contents
@@ -87,7 +87,28 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
         MHD_destroy_response(response);
         return ret;
     } else if (strcmp(method, "POST") == 0) { // --- POST ---
-        printf("asdf");
+        const char* _lbEntry = MHD_lookup_connection_value(connection, MHD_HEADER_KIND, "scoreEntry");
+        if (_lbEntry == NULL) {
+            QUEUE_ERROR_RESPONSE("no scoreEntry header specified in leaderboards API request");
+            LOG("user tried to post score, but did not provide a scoreEntry header\n");
+            return MHD_YES;
+        }
+        char lbEntry[strlen(_lbEntry)];
+        strcpy(lbEntry, _lbEntry);
+        char* score = strtok(lbEntry, ",");
+        char* name = strtok(NULL, ",");
+        char* time = strtok(NULL, ",");
+        if (time == NULL) {
+            QUEUE_ERROR_RESPONSE("invalid scoreEntry header in leaderboards API request");
+            LOG("malformed scoreEntry header\n");
+            return MHD_YES;
+        }
+        LOG("user '%s' posted score '%s' at time '%s'\n", name, score, time);
+        response = MHD_create_response_from_buffer(strlen("successfully posted score"), (void*)"successfully posted score", MHD_RESPMEM_PERSISTENT);
+        MHD_add_response_header(response, "Content-Type", "text/plain");
+        int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+        MHD_destroy_response(response);
+        return ret;
     }
 
     // not a GET request; error (for now)
