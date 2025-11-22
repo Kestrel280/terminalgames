@@ -7,6 +7,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sqlite3.h>
 
 #define LOG(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
 #define PORT 10279
@@ -14,13 +15,15 @@
                                 MHD_queue_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, __response);\
                                 MHD_destroy_response(__response); } while(0)
 const char* _leaderboardDir = "/leaderboards";
-
+const char* _templateInsertStmt = "INSERT into %s values(@name, @score, @time);";
 
 // GNU libmicrohttpd tutorial
 // https://www.gnu.org/software/libmicrohttpd/tutorial.html
 //
 // Helpful reference project for libmicrohttpd
 // https://github.com/PedroFnseca/rest-api-C/blob/main/src/main.c
+
+sqlite3* db;
 
 typedef struct _handlerParam HandlerParam;
 struct _handlerParam {
@@ -60,42 +63,24 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
         LOG("--ERROR-- no 'game' header specified in request to API\n");
         return MHD_YES;
     }
-    char* lbUri = (malloc)(sizeof(char) * (1 + strlen("/.csv") + strlen(_leaderboardDir) + strlen(game)));
-    char* _p = lbUri;
-    for (int i = 0; i < strlen(_leaderboardDir); i++) *(_p++) = _leaderboardDir[i];
-    *(_p++) = '/';
-    for (int i = 0; i < strlen(game); i++) *(_p++) = game[i];
-    strcpy(_p, ".csv");
-    LOG("lbUri: %s\n", lbUri);
-
-    // open requested leaderboard file; if not found, respond with error
-    int fd = open(lbUri+1, O_RDONLY, NULL); // lbUri contains leading /
-    if (fd == -1) {
-        QUEUE_ERROR_RESPONSE("invalid game specified in leaderboards API request");
-        LOG("... file not found in leaderboards dir\n");
-        return MHD_YES;
-    }
-    struct stat fdStat;
-    fstat(fd, &fdStat);
-    LOG("fd: %d\n", fd);
 
     if (strcmp(method, "GET") == 0) { // --- GET ---
-        // respond with file contents
-        response = MHD_create_response_from_fd_at_offset64((size_t)fdStat.st_size, fd, 0);
-        MHD_add_response_header(response, "Content-Type", "text/csv");
-        int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-        MHD_destroy_response(response);
-        return ret;
+        // TODO construct get request and respond with top n scores
+        QUEUE_ERROR_RESPONSE("GET not yet implemented for leaderboards");
+        return MHD_YES;
     } else if (strcmp(method, "POST") == 0) { // --- POST ---
+        // fetch scoreEntry header TODO switch to json?
         const char* _lbEntry = MHD_lookup_connection_value(connection, MHD_HEADER_KIND, "scoreEntry");
         if (_lbEntry == NULL) {
             QUEUE_ERROR_RESPONSE("no scoreEntry header specified in leaderboards API request");
             LOG("user tried to post score, but did not provide a scoreEntry header\n");
             return MHD_YES;
         }
+
+        // parse scoreEntry header
         char lbEntry[strlen(_lbEntry)];
         strcpy(lbEntry, _lbEntry);
-        char* score = strtok(lbEntry, ",");
+        char* score = strtok(lbEntry, ","); // TODO sanitize
         char* name = strtok(NULL, ",");
         char* time = strtok(NULL, ",");
         if (time == NULL) {
@@ -103,6 +88,22 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
             LOG("malformed scoreEntry header\n");
             return MHD_YES;
         }
+
+        // construct and execute sql statement
+        char _insertStmt[strlen(_templateInsertStmt) + strlen(game)];
+        sprintf(_insertStmt, _templateInsertStmt, game);
+        sqlite3_stmt* insertStmt;
+        if (sqlite3_prepare_v2(db, _insertStmt, -1, &insertStmt, NULL) != SQLITE_OK) { // compile statement
+            QUEUE_ERROR_RESPONSE("internal database error");
+            LOG("failure compiling SQL statements: error codes\n");
+            return MHD_YES;
+        }
+        sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@name"), name, strlen(name), SQLITE_STATIC); // SQLITE_STATIC = i am responsible for memory of the string
+        sqlite3_bind_int(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@score"), atoi(score));
+        sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@time"), time, strlen(time), SQLITE_STATIC);
+        sqlite3_step(insertStmt); // execute SQL statement
+        sqlite3_finalize(insertStmt);
+
         LOG("user '%s' posted score '%s' at time '%s'\n", name, score, time);
         response = MHD_create_response_from_buffer(strlen("successfully posted score"), (void*)"successfully posted score", MHD_RESPMEM_PERSISTENT);
         MHD_add_response_header(response, "Content-Type", "text/plain");
@@ -116,7 +117,6 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
     return MHD_YES;
 }
 
-
 int main(int argc, char* argv[]) {
     struct MHD_Daemon* daemon;
     daemon = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, PORT, NULL, NULL,
@@ -124,8 +124,16 @@ int main(int argc, char* argv[]) {
 
     if (daemon == NULL) return 1;
 
+    sqlite3_open("leaderboards.db", &db);
+    if (db == NULL) {
+        LOG("failure opening database\n");
+        MHD_stop_daemon(daemon);
+        return -1;
+    }
+
     getchar(); // block; server (listen + response callback) is running in its own thread, so just keep the process alive
 
+    sqlite3_close(db);
     MHD_stop_daemon(daemon);
     return 0;
 }
