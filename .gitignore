@@ -1,7 +1,8 @@
-# ignore everything w/o a file extension: ignore everything, then unignore anything with a file ext, then unignore dirs
+# ignore everything w/o a file extension: ignore everything, then unignore anything with a file ext, then unignore dirs, then unignore makefile
 *
 !*.*
 !*/
+!makefile
 
 # ignore build files
 *.o
