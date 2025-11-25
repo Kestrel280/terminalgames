@@ -1,18 +1,12 @@
-#include <sys/types.h>
-#include <sys/select.h>
-#include <sys/socket.h>
 #include <microhttpd.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
 #include <sqlite3.h>
+#include <json-c/json_object.h>
+#include <json-c/json_tokener.h>
 #include "utils.h"
 #include "server.h"
 
 const char* urlEndpoint = "/leaderboards";
-const char* _templateInsertStmt = "INSERT into %s values(@name, @score, @time);";
 sqlite3* db;
 
 int main(int argc, char* argv[]) {
@@ -31,6 +25,22 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    // json-c test: 
+    //  create a json_object,
+    //  populate it using json_tokener_parse,
+    //  ensure it prints nicely using json_object_to_json_string,
+    //  ensure we can extract the entry -> name field,
+    //  then call json_object_put on the PARENT to decrement reference counter and automatically free the object
+    //      (json-c will handle cleaning up the child objects, as long as we don't extend their lifetime with additional json_object_get()s)
+    json_object *obj, *entry_obj, *entry_name_obj;
+    obj = json_tokener_parse("{\"game\": \"snake\", \"entry\": { \"name\": \"sam\", \"time\": 1234, \"score\": 5678}}");
+    LOG("json-c test: following json object has %d fields\n", json_object_object_length(obj));
+    LOG("%s\n", json_object_to_json_string(obj));
+    json_object_object_get_ex(obj, "entry", &entry_obj);
+    LOG("%s\n", json_object_to_json_string(entry_obj));
+    json_object_object_get_ex(entry_obj, "name", &entry_name_obj);
+    LOG("%s\n", json_object_get_string(entry_name_obj));
+    json_object_put(obj);
     getchar(); // block; server (listen + response callback) is running in its own thread, so just keep the process alive
 
     sqlite3_close(db);

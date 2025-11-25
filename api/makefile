@@ -1,6 +1,6 @@
 CFLAGS = -Wall
 DEPSFILE = .deps
-SRCS = main.c server.c
+SRCS = main.c server.c leaderboard.c
 
 all: $(SRCS:%.c=%.o)
 	gcc *.o -o api -L/usr/local/lib/ -lmicrohttpd -lsqlite3 -ljson-c $(CFLAGS)

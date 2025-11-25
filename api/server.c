@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "server.h"
+#include "leaderboard.h"
 
 extern const char* urlEndpoint;
 
@@ -20,28 +21,42 @@ enum MHD_Result processIncrementalData(void* _ci, const char* data, size_t size)
     return MHD_YES;
 }
 
-// callback function when a request is FULLY handled (response constructed + queued)
 void completeRequest(void* cls, struct MHD_Connection* connection, void** req_cls, enum MHD_RequestTerminationCode toe) {
-    LOG("completeRequest callback invoked\n");
+    //LOG("completeRequest callback invoked\n");
     ConnectionInfo* ci = (ConnectionInfo*) *req_cls;
     free(ci);
 }
 
 void processRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
     ci->buf[ci->idx] = '\x00';
-    struct MHD_Response* r = MHD_create_response_from_buffer_static(strlen(ci->buf), (void*)ci->buf);
+    LOG("responding to request <%s>\n", ci->buf);
+
+    char* rtext;
+    struct MHD_Response* r;
+    switch (ci->connectionType) {
+        case CONNECTION_TYPE_GET: {
+            rtext = leaderboardGet(ci->buf);
+            r = MHD_create_response_from_buffer_with_free_callback(strlen(rtext), rtext, &free);
+            break;
+        }
+        case CONNECTION_TYPE_POST: {
+            rtext = leaderboardPost(ci->buf) ? "successfully posted to leaderboard" : "failed to post to leaderboard";
+            r = MHD_create_response_from_buffer(strlen(rtext), rtext, MHD_RESPMEM_PERSISTENT);
+            break;
+        }
+        default: QUEUE_ERROR_RESPONSE("http method not supported"); return;
+    }
+    LOG("\t responding with <%s>\n", rtext);
     MHD_add_response_header(r, "content-type", "text/plain");
     MHD_queue_response(connection, MHD_HTTP_OK, r);
     MHD_destroy_response(r);
-    LOG("processRequest called... queued an echo response:\n");
-    LOG("%s\n", ci->buf);
 }
 
 enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
                         const char* url, const char* method,
                         const char* version, const char* upload_data,
                         size_t* upload_data_size, void** req_cls) {
-    LOG("%s '%s' request for '%s' using version '%s'\n", *req_cls ? "Followup" : "New", method, url, version);
+    //LOG("%s '%s' request for '%s' using version '%s'\n", *req_cls ? "Followup" : "New", method, url, version);
 
     // check that they're accessing /leaderboards/; if not, respond with error
     if (strncmp(url, urlEndpoint, strlen(urlEndpoint)) != 0) {
