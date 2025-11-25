@@ -41,6 +41,8 @@ Example:
 
 ## **Post** a score to the leaderboard:
 
+Posting scores to the leaderboards is done automatically by supported terminal games. At this time, there is no anti-cheating mechanism to prevent the submission of fake or cheated times.
+
 To post a score to the leaderboard, issue a POST request to `<server>/leaderboards` with a JSON body like so:
 
 ```
