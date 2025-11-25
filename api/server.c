@@ -58,7 +58,7 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
                         size_t* upload_data_size, void** req_cls) {
     //LOG("%s '%s' request for '%s' using version '%s'\n", *req_cls ? "Followup" : "New", method, url, version);
 
-    // check that they're accessing /leaderboards/; if not, respond with error
+    // check that they're accessing /leaderboards...; if not, respond with error
     if (strncmp(url, urlEndpoint, strlen(urlEndpoint)) != 0) {
         QUEUE_ERROR_RESPONSE("improper attempt to access leaderboards API");
         return MHD_YES;
