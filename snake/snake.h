@@ -61,6 +61,7 @@ struct _game {
     Direction curDir;
     int height, width;
     int64_t timeToNextTickUs;
+    int64_t baseTimeToDecayUs, timeToNextDecayUs;
     Snake snake;
     WINDOW* window;
     int pickupPos;

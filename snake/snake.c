@@ -59,6 +59,9 @@ int gamePlay() {
     for (int i = 0; i < game.snake.bp._numEls; i++) game.snake.bp._data[i] = (bitpack_el)0; // initialize all bits to 0 (false)
     for (int i = game.snake.tail; i <= game.snake.head; i++) bitPackSet(game.snake.bp, game.snake.data[i], true); // set all bits of snake
 
+    game.baseTimeToDecayUs = (int64_t)400000;
+    game.timeToNextDecayUs = (int64_t)0;
+
     struct timeval tv_prev, tv_now;
     gettimeofday(&tv_prev, NULL);
     srand(tv_prev.tv_sec * tv_prev.tv_usec);
@@ -206,13 +209,11 @@ void gameCreatePickup(Game* game) {
 }
 
 void gameOver(Game* game, uint64_t dtUs) {
-    static int64_t baseTimeToDecayUs = (int64_t)400000;
-    static int64_t timeToNextDecayUs = (int64_t)0;
-    timeToNextDecayUs -= (int64_t)dtUs;
-    if (timeToNextDecayUs < 0) {
+    game->timeToNextDecayUs -= (int64_t)dtUs;
+    if (game->timeToNextDecayUs < 0) {
         if (game->snake.size <= 1) game->state = GAME_STATE_FINISHED;
-        timeToNextDecayUs += baseTimeToDecayUs;
-        baseTimeToDecayUs = baseTimeToDecayUs - (baseTimeToDecayUs / 10);
+        game->timeToNextDecayUs += game->baseTimeToDecayUs;
+        game->baseTimeToDecayUs = game->baseTimeToDecayUs - (game->baseTimeToDecayUs / 10);
         int item = snakePop(&game->snake);
         game->needsDraw = true;
     }
