@@ -65,6 +65,7 @@ char* leaderboardGet(ConnectionInfo* ci) {
 
         if (sqlite3_prepare_v2(db, _getStmt, -1, &getStmt, NULL) != SQLITE_OK) {
             LOG("error compiling SQL get-player statement\n");
+            free(_getStmt);
             return errOut;
         }
         sqlite3_bind_text(getStmt, sqlite3_bind_parameter_index(getStmt, "@name"), playerName, strlen(playerName), SQLITE_STATIC);
@@ -95,23 +96,27 @@ char* leaderboardGet(ConnectionInfo* ci) {
             json_object_array_add(jgameobj, jentry);
         };
 
-        LOG("json obj: %s\n", json_object_to_json_string(jobj));
+        size_t sz;
+        const char* _str = json_object_to_json_string_length(jobj, JSON_C_TO_STRING_SPACED, &sz);
+        out = (char*)malloc(sizeof(char) * (sz + 1));
+        memcpy(out, _str, sz);
+        out[sz] = '\x00';
 
         //clean up
+        free(_getStmt);
+        json_object_put(jobj);
         sqlite3_finalize(getStmt);
-
     }
     else if (SAME_STRING(ci->resourceChain[1], "game")) {
         LOG("game req\n");
+        out = (char*)malloc(sizeof(char) * 10);
+        for (int i = 0; i < 5; i++) out[i] = "asdfg"[i];
+        out[5] = '\x00';
     }
     else {
         LOG("unreachable code in leaderboardGet()?");
         exit(1);
     }
-
-    out = (char*)malloc(sizeof(char) * 10);
-    for (int i = 0; i < 5; i++) out[i] = "asdfg"[i];
-    out[5] = '\x00';
 
     free(errOut);
     return out;

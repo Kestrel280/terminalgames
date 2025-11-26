@@ -49,7 +49,7 @@ void processRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
         default: QUEUE_ERROR_RESPONSE("http method not supported"); return;
     }
     LOG("\t responding with <%s>\n", rtext);
-    MHD_add_response_header(r, "content-type", "text/plain");
+    MHD_add_response_header(r, "content-type", "application/json");
     MHD_queue_response(connection, MHD_HTTP_OK, r);
     MHD_destroy_response(r);
 }
