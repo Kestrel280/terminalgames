@@ -1,5 +1,6 @@
 #ifndef SERVER_H
 #define SERVER_H
+#include <microhttpd.h>
 #include "utils.h"
 
 #define MAX_POST_BODY_SIZE 1023

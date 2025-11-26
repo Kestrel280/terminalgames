@@ -37,12 +37,12 @@ void processRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
     struct MHD_Response* r;
     switch (ci->connectionType) {
         case CONNECTION_TYPE_GET: {
-            rtext = leaderboardGet(ci->buf);
+            rtext = leaderboardGet(ci);
             r = MHD_create_response_from_buffer_with_free_callback(strlen(rtext), rtext, &free);
             break;
         }
         case CONNECTION_TYPE_POST: {
-            rtext = leaderboardPost(ci->buf) ? "successfully posted to leaderboard" : "failed to post to leaderboard";
+            rtext = leaderboardPost(ci) ? "successfully posted to leaderboard" : "failed to post to leaderboard: check API spec";
             r = MHD_create_response_from_buffer(strlen(rtext), rtext, MHD_RESPMEM_PERSISTENT);
             break;
         }

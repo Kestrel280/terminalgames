@@ -6,17 +6,32 @@
 #include "leaderboard.h"
 #include "utils.h"
 
+static inline bool SAME_STRING(const char* s1, const char* s2) { return (strcmp(s1, s2) == 0); }
+
 const char* _templateInsertStmt = "INSERT into %s values(@name, @score, @time);";
 extern sqlite3* db;
 
-char* leaderboardGet(char* request) {
-    char* out = (char*)malloc(sizeof(char) * 10);
+char* leaderboardGet(ConnectionInfo* ci) {
+    //char* request = ci->buf;
+    char* out;
+    if (ci->resourceChainSize != 3 || (!SAME_STRING(ci->resourceChain[1], "player") && !SAME_STRING(ci->resourceChain[1], "game"))) {
+        const char* err = "invalid endpoint or GET not supported for this endpoint";
+        int len = strlen(err);
+        out = (char*)malloc(sizeof(char*) * (len + 1));
+        memcpy(out, err, len);
+        out[len] = '\x00';
+        return out;
+    }
+    out = (char*)malloc(sizeof(char) * 10);
     for (int i = 0; i < 5; i++) out[i] = "asdfg"[i];
     out[5] = '\x00';
     return out;
 }
 
-bool leaderboardPost(char* request) {
+bool leaderboardPost(ConnectionInfo* ci) {
+    if (ci->resourceChainSize > 1) return false;
+
+    char* request = ci->buf;
     json_object* jobj = json_tokener_parse(request);
     if (!jobj) { LOG("invalid json provided to leaderboardPost\n"); return false; }
 
