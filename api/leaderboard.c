@@ -15,6 +15,7 @@ static inline bool SAME_STRING(const char* s1, const char* s2) { return (strcmp(
 
 const char* _templateInsertStmt = "INSERT into %s values('%s', @name, @score, @time);";
 const char* _templateGetPlayerStmt = "SELECT * FROM %s WHERE name=@name";
+const char* _templateGetGameStmt = "SELECT * FROM %s ORDER BY score DESC, time ASC";
 extern sqlite3* db;
 
 char* leaderboardGet(ConnectionInfo* ci) {
@@ -108,10 +109,48 @@ char* leaderboardGet(ConnectionInfo* ci) {
         sqlite3_finalize(getStmt);
     }
     else if (SAME_STRING(ci->resourceChain[1], "game")) {
-        LOG("game req\n");
-        out = (char*)malloc(sizeof(char) * 10);
-        for (int i = 0; i < 5; i++) out[i] = "asdfg"[i];
-        out[5] = '\x00';
+        char* gameName = ci->resourceChain[2];
+        int reqlen = strlen(_templateGetGameStmt) + strlen(gameName) + 2; // 2 extra characters for ; and null terminator
+        char* _getStmt = (char*)malloc(sizeof(char) * reqlen);
+        sprintf(_getStmt, _templateGetGameStmt, gameName);
+
+        if (sqlite3_prepare_v2(db, _getStmt, -1, &getStmt, NULL) != SQLITE_OK) {
+            LOG("error compiling SQL get-game statement\n");
+            free(_getStmt);
+            return errOut;
+        }
+        EXPAND_AND_LOG_SQL_STATEMENT(getStmt);
+
+        json_object* jobj = json_object_new_object();
+        json_object* jgameobj = json_object_new_array();
+        json_object_object_add(jobj, gameName, jgameobj);
+
+        for (int i = 0; (i < 10) && (sqlite3_step(getStmt) == SQLITE_ROW); i++) {
+            int score = sqlite3_column_int(getStmt, COLUMN_SCORE);
+            int time = sqlite3_column_int(getStmt, COLUMN_TIME);
+            const char* playerName = (const char*)sqlite3_column_text(getStmt, COLUMN_NAME);
+            LOG("\t\t player %s has score %d at time %d in game %s\n", playerName, score, time, gameName);
+
+            json_object* jentry = json_object_new_object();
+            json_object* jentryName = json_object_new_string(playerName);
+            json_object* jentryScore = json_object_new_int(score);
+            json_object* jentryTime = json_object_new_int(time);
+            json_object_object_add(jentry, "name", jentryName);
+            json_object_object_add(jentry, "score", jentryScore);
+            json_object_object_add(jentry, "time", jentryTime);
+            json_object_array_add(jgameobj, jentry);
+        }
+
+        size_t sz;
+        const char* _str = json_object_to_json_string_length(jobj, JSON_C_TO_STRING_SPACED, &sz);
+        out = (char*)malloc(sizeof(char) * (sz + 1));
+        memcpy(out, _str, sz);
+        out[sz] = '\x00';
+
+        //clean up
+        free(_getStmt);
+        json_object_put(jobj);
+        sqlite3_finalize(getStmt);
     }
     else {
         LOG("unreachable code in leaderboardGet()?");
