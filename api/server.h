@@ -23,9 +23,11 @@ typedef enum {
 
 typedef struct _connectionInfo ConnectionInfo;
 struct _connectionInfo {
-    ConnectionType connectionType;
+    char** resourceChain; // /leaderboards/game/snake -> ["leaderboards", "game", "snake"]
+    int resourceChainSize;
     int idx;
     char buf[MAX_POST_BODY_SIZE + 1];
+    ConnectionType connectionType;
 };
 
 // main connection callback
