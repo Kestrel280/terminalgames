@@ -70,9 +70,32 @@ char* leaderboardGet(ConnectionInfo* ci) {
         sqlite3_bind_text(getStmt, sqlite3_bind_parameter_index(getStmt, "@name"), playerName, strlen(playerName), SQLITE_STATIC);
         EXPAND_AND_LOG_SQL_STATEMENT(getStmt);
         
+        json_object* jobj = json_object_new_object();
+
+        // parse results into a JSON object
         while (sqlite3_step(getStmt) == SQLITE_ROW) {
-            LOG("\t\t player %s has score %d at time %d in game %s\n", playerName, sqlite3_column_int(getStmt, COLUMN_SCORE), sqlite3_column_int(getStmt, COLUMN_TIME), sqlite3_column_text(getStmt, COLUMN_GAME));
+            int score = sqlite3_column_int(getStmt, COLUMN_SCORE);
+            int time = sqlite3_column_int(getStmt, COLUMN_TIME);
+            const char* game = (const char*)sqlite3_column_text(getStmt, COLUMN_GAME); // TODO sqlite returns UTF-8; we are coercing into ASCII because game names are guaranteed to be ASCII (hopefully)
+            LOG("\t\t player %s has score %d at time %d in game %s\n", playerName, score, time, game);
+
+            json_object* jgameobj = json_object_object_get(jobj, game);
+            if (jgameobj == NULL) { // create an array of entries for this game
+                jgameobj = json_object_new_array();
+                json_object_object_add(jobj, game, jgameobj);
+            }
+
+            json_object* jentry = json_object_new_object();
+            json_object* jentryName = json_object_new_string(playerName);
+            json_object* jentryScore = json_object_new_int(score);
+            json_object* jentryTime = json_object_new_int(time);
+            json_object_object_add(jentry, "name", jentryName);
+            json_object_object_add(jentry, "score", jentryScore);
+            json_object_object_add(jentry, "time", jentryTime);
+            json_object_array_add(jgameobj, jentry);
         };
+
+        LOG("json obj: %s\n", json_object_to_json_string(jobj));
 
         //clean up
         sqlite3_finalize(getStmt);
