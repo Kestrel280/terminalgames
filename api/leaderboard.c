@@ -6,25 +6,91 @@
 #include "leaderboard.h"
 #include "utils.h"
 
+#define EXPAND_AND_LOG_SQL_STATEMENT(stmt) do { char* __expStr__ = sqlite3_expanded_sql(stmt); LOG("\t expanded SQL statement: '%s'\n", __expStr__); sqlite3_free(__expStr__); } while(0)
+
+// games which can be queried
+const char* GAMES[] = { "snake" , "anotherfakegame" };
+
 static inline bool SAME_STRING(const char* s1, const char* s2) { return (strcmp(s1, s2) == 0); }
 
-const char* _templateInsertStmt = "INSERT into %s values(@name, @score, @time);";
+const char* _templateInsertStmt = "INSERT into %s values('%s', @name, @score, @time);";
+const char* _templateGetPlayerStmt = "SELECT * FROM %s WHERE name=@name";
 extern sqlite3* db;
 
 char* leaderboardGet(ConnectionInfo* ci) {
-    //char* request = ci->buf;
     char* out;
-    if (ci->resourceChainSize != 3 || (!SAME_STRING(ci->resourceChain[1], "player") && !SAME_STRING(ci->resourceChain[1], "game"))) {
-        const char* err = "invalid endpoint or GET not supported for this endpoint";
-        int len = strlen(err);
-        out = (char*)malloc(sizeof(char*) * (len + 1));
-        memcpy(out, err, len);
-        out[len] = '\x00';
-        return out;
+
+    // prepare error output in case we need it
+    const char* err = "invalid endpoint or GET not supported for this endpoint";
+    int len = strlen(err);
+    char* errOut = (char*)malloc(sizeof(char*) * (len + 1));
+    memcpy(errOut, err, len);
+    errOut[len] = '\x00';
+    
+    //char* request = ci->buf;
+    if (ci->resourceChainSize != 3 || (!SAME_STRING(ci->resourceChain[1], "player") && !SAME_STRING(ci->resourceChain[1], "game"))) return errOut;
+
+    sqlite3_stmt* getStmt;
+
+    // requesting highscores for a given player
+    // TODO this is also pretty messy. and lots of redundant calls to strlen
+    if (SAME_STRING(ci->resourceChain[1], "player")) {
+        // determine the size of our query statement: each game needs a SELECT statement, and each game after the first needs a "UNION " prefix
+        char* playerName = ci->resourceChain[2];
+        int reqlen = 0;
+        for (int i = 0; i < (sizeof(GAMES) / sizeof(char*)); i++) {
+            reqlen += strlen(_templateGetPlayerStmt) - strlen("%s") + strlen(GAMES[i]);
+            if (i > 0) reqlen += strlen(" UNION ");
+        }
+        reqlen += 2; // extra char for ; and null terminator
+        
+        // allocate space for the query statement
+        char* _getStmt = (char*)malloc(sizeof(char) * (reqlen + 1));
+
+        // add each individual game query to the query statement
+        for (int i = 0, pc = 0; i < (sizeof(GAMES) / sizeof(char*)); i++) {
+            int len = strlen(_templateGetPlayerStmt) - strlen("%s") + strlen(GAMES[i]);
+            if (i > 0) len += strlen(" UNION ");
+            char buf[len];
+            if (i > 0) memcpy(buf, " UNION ", strlen(" UNION "));
+            sprintf(i > 0 ? (buf + strlen(" UNION ")) : buf, _templateGetPlayerStmt, GAMES[i]);
+            for (int j = 0; j < len; j++, pc++) _getStmt[pc] = buf[j];
+        }
+
+        _getStmt[reqlen - 2] = ';';
+        _getStmt[reqlen - 1] = '\x00';
+
+        
+        LOG("_getStmt (reqlen = %d): %s\n", reqlen, _getStmt);
+
+        if (sqlite3_prepare_v2(db, _getStmt, -1, &getStmt, NULL) != SQLITE_OK) {
+            LOG("error compiling SQL get-player statement\n");
+            return errOut;
+        }
+        sqlite3_bind_text(getStmt, sqlite3_bind_parameter_index(getStmt, "@name"), playerName, strlen(playerName), SQLITE_STATIC);
+        EXPAND_AND_LOG_SQL_STATEMENT(getStmt);
+        
+        while (sqlite3_step(getStmt) == SQLITE_ROW) {
+            LOG("\t\t player %s has score %d at time %d in game %s\n", playerName, sqlite3_column_int(getStmt, COLUMN_SCORE), sqlite3_column_int(getStmt, COLUMN_TIME), sqlite3_column_text(getStmt, COLUMN_GAME));
+        };
+
+        //clean up
+        sqlite3_finalize(getStmt);
+
     }
+    else if (SAME_STRING(ci->resourceChain[1], "game")) {
+        LOG("game req\n");
+    }
+    else {
+        LOG("unreachable code in leaderboardGet()?");
+        exit(1);
+    }
+
     out = (char*)malloc(sizeof(char) * 10);
     for (int i = 0; i < 5; i++) out[i] = "asdfg"[i];
     out[5] = '\x00';
+
+    free(errOut);
     return out;
 }
 
@@ -37,7 +103,7 @@ bool leaderboardPost(ConnectionInfo* ci) {
 
     // extract game
     // this is the only value we'll need to "sanitize"/validate, since we'll be sprintf'ing it into our SQL statement (other values are prepared statement parameters)
-    // upstream, server is will reject messages with more than MAX_POST_BODY_SIZE (server.h) bytes
+    // upstream, server will reject messages with more than MAX_POST_BODY_SIZE (server.h) bytes...
     // so, don't need to worry about oversized entries here
     json_object* jgame;
     const char* game;
@@ -70,8 +136,9 @@ bool leaderboardPost(ConnectionInfo* ci) {
     //LOG("leaderboardPost extracted game='%s', name='%s', score=%ld, time=%ld\n", game, name, score, time);
 
     // construct SQL insert-into statement
-    char _insertStmt[strlen(_templateInsertStmt) + strlen(game)];
-    sprintf(_insertStmt, _templateInsertStmt, game);
+    char _insertStmt[strlen(_templateInsertStmt) + (2 * strlen(game))];
+    sprintf(_insertStmt, _templateInsertStmt, game, game);
+    LOG("_insertStmt: %s\n", _insertStmt);
     sqlite3_stmt* insertStmt;
     if (sqlite3_prepare_v2(db, _insertStmt, -1, &insertStmt, NULL) != SQLITE_OK) { // compile statement
         LOG("error compiling SQL insert-into statement\n");
@@ -83,12 +150,10 @@ bool leaderboardPost(ConnectionInfo* ci) {
     sqlite3_bind_int64(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@time"), time);
 
     // execute SQL statement
-    char* expandedStmt = sqlite3_expanded_sql(insertStmt); // must be freed by sqlite3_free
-    LOG("\t executing SQL statement '%s'\n", expandedStmt);
+    EXPAND_AND_LOG_SQL_STATEMENT(insertStmt);
     sqlite3_step(insertStmt);
 
     //clean up
-    sqlite3_free(expandedStmt);
     sqlite3_finalize(insertStmt);
     json_object_put(jobj);
     return true;

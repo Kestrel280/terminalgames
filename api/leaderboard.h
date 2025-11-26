@@ -4,6 +4,16 @@
 #include <stdbool.h>
 #include "server.h"
 
+// ordering of the columns in leaderboard database tables. consistent across all game tables
+enum {
+    COLUMN_GAME,
+    COLUMN_NAME,
+    COLUMN_SCORE,
+    COLUMN_TIME
+};
+
+extern const char* GAMES[];
+
 // get from leaderboard.
 // 'request' is a json-formatted string specifying which game to fetch, and TODO filters for user, # of scores to report, etc
 // returns a malloc'd json-formatted string containing answer, which MUST BE FREED BY CALLER
