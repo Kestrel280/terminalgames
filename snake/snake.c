@@ -247,18 +247,30 @@ void gameSubmitScore(Game* game) {
     char enterNamePrompt[100];
     sprintf(enterNamePrompt, "ENTER NAME (MAX %d):", NAME_MAX_LENGTH);
 
-    erase();
 
-    char buf[50 + NAME_MAX_LENGTH + 1];
-    sprintf(buf, "SCORE: %d", game->score);
-    mvprintw(2, (width - strlen(buf)) / 2, buf);
+    char buf[NAME_MAX_LENGTH + 1];
+    buf[0] = '\x00';
 
-    mvprintw(4, (width - strlen(enterNamePrompt)) / 2, enterNamePrompt);
-    mvaddch(5, (width - NAME_MAX_LENGTH) / 2 - 1, '<');
-    mvaddch(5, (width + NAME_MAX_LENGTH) / 2, '>');
     echo();
     curs_set(1);
-    mvgetnstr(5, (width - NAME_MAX_LENGTH) / 2, buf, NAME_MAX_LENGTH);
+
+    do {
+        erase();
+        sprintf(buf, "SCORE: %d", game->score);
+        mvprintw(2, (width - strlen(buf)) / 2, buf);
+        mvprintw(4, (width - strlen(enterNamePrompt)) / 2, enterNamePrompt);
+        mvaddch(5, (width - NAME_MAX_LENGTH) / 2 - 1, '<');
+        mvaddch(5, (width + NAME_MAX_LENGTH) / 2, '>');
+        mvgetnstr(5, (width - NAME_MAX_LENGTH) / 2, buf, NAME_MAX_LENGTH);
+        if (strlen(buf) > 0) break;
+        erase();
+        mvprintw(height / 2, (width - strlen("Cannot submit time")) / 2, "Cannot submit time");
+        mvprintw(height / 2 + 1, (width - strlen("Name cannot be empty")) / 2, "Name cannot be empty");
+        mvprintw(height / 2 + 1, (width - strlen("Press any key to try again")) / 2, "Press any key to try again");
+        refresh();
+        getch();
+    } while (1);
+
     curs_set(0);
     noecho();
     buf[NAME_MAX_LENGTH] = '\x00';

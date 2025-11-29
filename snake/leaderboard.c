@@ -81,7 +81,7 @@ void leaderboardDisplay() {
 
     size_t jsize = json_object_array_length(jarr);
 
-    mvprintw(2, (width - 28) / 2, "%12s %8s %8s", "NAME", "SCORE", "TIME");
+    mvprintw(2, (width - 45) / 2, "%12s %12s   %20s", "NAME", "SCORE", "TIME");
     int i = 0;
     for (; i < jsize; i++) {
         json_object* jel = json_object_array_get_idx(jarr, i);
@@ -89,10 +89,14 @@ void leaderboardDisplay() {
         json_object* jscore = json_object_object_get(jel, "score");
         json_object* jtime = json_object_object_get(jel, "time");
         const char* name = json_object_get_string(jname);
-        int score = json_object_get_int(jscore);
-        int time = json_object_get_int(jtime);
-        mvprintw(4 + i, (width - 28) / 2 - 4, "%2d.", i + 1);
-        mvprintw(4 + i, (width - 28) / 2, "%12s %8d %8d", name, score, time);
+        uint64_t score = json_object_get_uint64(jscore);
+        time_t t = (time_t)json_object_get_uint64(jtime);
+        struct tm* ti;
+        ti = localtime(&t);
+        char ft[18]; // formatted time
+        strftime(ft, 18, "%R %d %b %Y", ti);
+        mvprintw(4 + i, (width - 45) / 2 - 4, "%2d.", i + 1);
+        mvprintw(4 + i, (width - 45) / 2, "%12s %12d   %20s", name, score, ft);
     }
 
     mvprintw(6 + i, (width - strlen(pressAnyButtonStr)) / 2, "%s", pressAnyButtonStr);
