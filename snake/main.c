@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
     cbreak();
     keypad(stdscr, TRUE);
     curs_set(0);
-    
+
     MenuOption mo;
     while ((mo = menu()) != MENU_OPTION_QUIT) {
         switch (mo) {

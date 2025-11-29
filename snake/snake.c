@@ -168,6 +168,7 @@ Collision gameTryCollision(Game* game, int pos) {
 }
 
 static inline void paintCh(WINDOW* window, char c, int cg, int row, int col) {
+    if (window == NULL) return;
     wattron(window, COLOR_PAIR(cg));
     mvwaddch(window, row, col, c);
     wattroff(window, COLOR_PAIR(cg));
