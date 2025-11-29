@@ -1,23 +1,39 @@
 #ifndef LEADERBOARD_H
 #define LEADERBOARD_H
 
+#include <time.h>
+
+#define GAME_WIDTH 19
+#define GAME_HEIGHT 25
 #define STRING_BASE_CAPACITY 8
 extern const char* leaderboardGetUrl;
+extern const char* leaderboardPostUrl;
 
-// small helper
+// small helpers for curl callbacks
 typedef struct _string {
     char* data;
     int capacity;
     int size;
 } String;
 
-// callback for CURL request: may be invoked multiple times for a single request
-size_t curlWriteCallback(void* curledData, size_t sz /* always 1 */, size_t count, void* ppOut);
+typedef struct _outbound {
+    const char* readPtr;
+    int remaining;
+} Outbound;
+
+// callback for CURL GET request: may be invoked multiple times for a single request
+size_t curlWriteCallback(void* curledData, size_t sz, size_t count, void* hStr);
+
+// callback for CURL POST request: may be invoked multiple times for a single request
+size_t curlReadCallback(void*, size_t sz, size_t count, void* hOb);
 
 // helper to display error
-void printError(const char* reason);
+void printError(const char* errStr, const char* reason);
 
 // monolith entrypoint that sets up CURL request, executes, and displays results
 void leaderboardDisplay();
+
+// monolith entrypoint to construct JSON message and CURL to leaderboard endpoint
+void leaderboardSubmitScore(const char* name, uint64_t score, time_t time);
 
 #endif

@@ -5,6 +5,7 @@
 #include "bitpack.h"
 
 #define SNAKE_COOLDOWN 125000l
+#define NAME_MAX_LENGTH 12
 
 typedef int GameState;
 typedef int Direction;
@@ -60,10 +61,12 @@ struct _game {
     GameState state;
     Direction curDir;
     int height, width;
+    uint64_t score;
     int64_t timeToNextTickUs;
     int64_t baseTimeToDecayUs, timeToNextDecayUs;
     Snake snake;
     WINDOW* window;
+    WINDOW* statsWindow;
     int pickupPos;
     bool needsDraw;
 };
@@ -76,5 +79,6 @@ Collision gameTryCollision(Game* game, int pos);
 void gameDraw(Game* game);
 void gameCreatePickup(Game* game);
 void gameOver(Game* game, uint64_t dtUs);
+void gameSubmitScore(Game* game);
 
 #endif

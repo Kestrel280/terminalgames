@@ -12,13 +12,13 @@
 */
 
 const char* leaderboardGetUrl = "https://samdowney.dev/leaderboards/game/snake";
+const char* leaderboardPostUrl = "https://samdowney.dev/leaderboards";
 
 static int width, height;
-static const char* errStr = "Could not fetch leaderboard:";
 static const char* pressAnyButtonStr = "Press any button to return to menu";
 
-size_t curlWriteCallback(void* data, size_t __sz__always__1__, size_t count, void* ppOut) {
-    String* pStr = (String*)ppOut;
+size_t curlWriteCallback(void* data, size_t sz, size_t count, void* hStr) {
+    String* pStr = (String*)hStr;
     if (pStr->size + count >= pStr->capacity) {
         pStr->data = realloc(pStr->data, pStr->size + count + 1);
         pStr->capacity = pStr->size + count + 1;
@@ -30,7 +30,17 @@ size_t curlWriteCallback(void* data, size_t __sz__always__1__, size_t count, voi
     return count;
 }
 
-void printError(const char* reason) {
+// callback invoked when invoking a POST request with curl
+size_t curlReadCallback(void* buf, size_t sz, size_t count, void* hOb) {
+    Outbound* pOb = (Outbound*)hOb;
+    size_t amountToCopy = pOb->remaining > (sz * count) ? sz * count : pOb->remaining;
+    memcpy(buf, pOb->readPtr, amountToCopy);
+    pOb->readPtr += amountToCopy;
+    pOb->remaining -= amountToCopy;
+    return amountToCopy;
+}
+
+void printError(const char* errStr, const char* reason) {
     mvprintw(height / 2, (width - strlen(errStr)) / 2, "%s", errStr);
     mvprintw(height / 2 + 1, (width - (strlen(reason))) / 2, "%s", reason);
     mvprintw(height / 2 + 2, (width - (strlen(pressAnyButtonStr))) / 2, "%s", pressAnyButtonStr);
@@ -39,6 +49,7 @@ void printError(const char* reason) {
 }
 
 void leaderboardDisplay() {
+    static const char* errStr = "Could not fetch leaderboard:";
 
     getmaxyx(stdscr, height, width);
     clear();
@@ -46,10 +57,10 @@ void leaderboardDisplay() {
     CURL* curl;
     CURLcode res = curl_global_init(CURL_GLOBAL_ALL);
     // res = 1; // force failure, for testing
-    if (res) { printError("Failed to initialize CURL environment"); return; }
+    if (res) { printError(errStr, "Failed to initialize CURL environment"); return; }
 
     curl = curl_easy_init();
-    if (!curl) { printError("Failed to initialize CURL object"); curl_global_cleanup(); return; }
+    if (!curl) { printError(errStr, "Failed to initialize CURL object"); curl_global_cleanup(); return; }
 
     String string;
     string.data = (char*)malloc(sizeof(char) * STRING_BASE_CAPACITY);
@@ -60,13 +71,13 @@ void leaderboardDisplay() {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &string);
     res = curl_easy_perform(curl);
-    if (res != CURLE_OK) { printError("Failed to fetch leaderboard data; server may be offline"); curl_global_cleanup(); return; }
+    if (res != CURLE_OK) { printError(errStr, "Failed to fetch leaderboard data; server may be offline"); curl_global_cleanup(); return; }
 
     json_object* jobj = json_tokener_parse(string.data);
-    if (jobj == NULL) { printError("Failed to parse leaderboard data; server may have returned error"); curl_global_cleanup(); return; }
+    if (jobj == NULL) { printError(errStr, "Failed to parse leaderboard data; server may have returned error"); curl_global_cleanup(); return; }
 
     json_object* jarr = json_object_object_get(jobj, "snake");
-    if (jarr == NULL) { printError("No entries in leaderboard data!"); curl_global_cleanup(); return; }
+    if (jarr == NULL) { printError(errStr, "No entries in leaderboard data!"); curl_global_cleanup(); return; }
 
     size_t jsize = json_object_array_length(jarr);
 
@@ -94,5 +105,51 @@ void leaderboardDisplay() {
     curl_global_cleanup();
     json_object_put(jobj);
 
+    return;
+}
+
+void leaderboardSubmitScore(const char* name, uint64_t score, time_t time) {
+    static const char* errStr = "Could not submit to leaderboard";
+    json_object* jobj = json_object_new_object();
+    if (!jobj) { printError(errStr, "Memory error with json-c"); return; }
+
+    json_object* jgame = json_object_new_string("snake");
+    if (!jgame) { json_object_put(jobj); printError(errStr, "Memory error with json-c"); return; }
+    json_object_object_add(jobj, "game", jgame);
+
+    json_object* jentry = json_object_new_object();
+    json_object* jname = json_object_new_string(name);
+    json_object* jscore = json_object_new_uint64(score);
+    json_object* jtime = json_object_new_uint64(time);
+
+    if (!(jentry && jname && jscore && jtime)) { printError(errStr, "Memory error with json-c"); return; }
+    json_object_object_add(jentry, "name", jname);
+    json_object_object_add(jentry, "score", jscore);
+    json_object_object_add(jentry, "time", jtime);
+    json_object_object_add(jobj, "entry", jentry);
+
+    const char* data = json_object_to_json_string(jobj);
+    Outbound ob;
+    ob.readPtr = data;
+    ob.remaining = strlen(data);
+
+    CURLcode res = curl_global_init(CURL_GLOBAL_ALL);
+    if (res) { printError(errStr, "Failed to initialize CURL environment"); return; }
+    CURL* curl = curl_easy_init();
+    if(!curl) { printError(errStr, "Failed to create CURL object"); return; }
+
+    curl_easy_setopt(curl, CURLOPT_URL, leaderboardPostUrl);
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_READFUNCTION, curlReadCallback);
+    curl_easy_setopt(curl, CURLOPT_READDATA, &ob);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)ob.remaining);
+
+    res = curl_easy_perform(curl);
+    if (res != CURLE_OK) { printError(errStr, "Unable to POST"); curl_global_cleanup(); return; }
+
+    curl_easy_cleanup(curl);
+    curl_global_cleanup();
+    json_object_put(jobj);
     return;
 }
