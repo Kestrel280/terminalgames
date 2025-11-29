@@ -8,3 +8,6 @@ The `/api` folder contains a (WIP) webserver application used for maintaining a 
 
 ## Building & Dependencies
 To build a project, invoke `make` from the project's directory. GCC and ncurses are required. To build on Windows, install `make`, `gcc-core`, and `ncurses-devel` using cygwin.
+
+## Notes
+- [ncurses leaks memory by design](https://invisible-island.net/ncurses/ncurses.faq.html#config_leaks).
