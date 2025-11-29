@@ -3,7 +3,10 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <inttypes.h>
+#include <string.h>
+#include <time.h>
 #include "snake.h"
+#include "leaderboard.h"
 
 char gfxChars[CG_META_NUM_CGS];
 
@@ -33,12 +36,13 @@ int gamePlay() {
     refresh();
     Game game;
 
-    game.width = 14;
-    game.height = 18;
+    game.width = GAME_WIDTH;
+    game.height = GAME_HEIGHT;
     
     int screenMaxWidth, screenMaxHeight;
     getmaxyx(stdscr, screenMaxHeight, screenMaxWidth);
     game.window = newwin(game.height, game.width, (screenMaxHeight - game.height) / 2, (screenMaxWidth - game.width) / 2);
+    game.statsWindow = newwin(2, game.width, (screenMaxHeight - game.height) / 2 + game.height, (screenMaxWidth - game.width) / 2);
     keypad(game.window, TRUE);
     nodelay(game.window, TRUE); // disable blocking on getch()
     game.needsDraw = true;
@@ -46,6 +50,7 @@ int gamePlay() {
     game.state = GAME_STATE_ACTIVE;
     game.timeToNextTickUs = SNAKE_COOLDOWN;
     game.curDir = SOUTH;
+    game.score = 0;
     game.snake.data = (int*)malloc(sizeof(int) * game.width * game.height);
     game.snake.size = 5;
     game.snake.capacity = game.width * game.height;
@@ -79,6 +84,9 @@ int gamePlay() {
         }
         if (game.needsDraw) gameDraw(&game);
     }
+
+    nodelay(game.window, FALSE); // disable blocking on getch()
+    gameSubmitScore(&game);
 
     free(game.snake.data);
     free(game.snake.bp._data);
@@ -118,6 +126,8 @@ void gameTick(Game* game, uint64_t dtUs) {
 
     snakePush(&game->snake, snakeHeadNextPos);
     snakePop(&game->snake);
+
+    game->score += (game->snake.size * game->snake.size);
 
     game->needsDraw = true;
 
@@ -177,6 +187,7 @@ static inline void paintCh(WINDOW* window, char c, int cg, int row, int col) {
 void gameDraw(Game* game) {
     game->needsDraw = false;
     werase(game->window);
+    werase(game->statsWindow);
 
     // draw walls
     for (int i = 0; i <= game->width; i++) paintCh(game->window, gfxChars[CG_WALL], CG_WALL, 0, i);
@@ -193,7 +204,13 @@ void gameDraw(Game* game) {
     // draw pickup
     paintCh(game->window, gfxChars[CG_PICKUP], CG_PICKUP, idxToRow(game->pickupPos, game->width), idxToCol(game->pickupPos, game->width));
 
+    char buf[128];
+    sprintf(buf, "%d", game->score);
+    mvwprintw(game->statsWindow, 0, (game->width - strlen("-- SCORE --")) / 2, "-- SCORE --");
+    mvwprintw(game->statsWindow, 1, (game->width - strlen(buf)) / 2, buf);
+
     wrefresh(game->window);
+    wrefresh(game->statsWindow);
     return;
 }
 
@@ -220,3 +237,45 @@ void gameOver(Game* game, uint64_t dtUs) {
     }
 }
 
+void gameSubmitScore(Game* game) {
+    time_t t = time(NULL);
+
+    // operate in stdscr space since game window might be too small
+    int width, height;
+    getmaxyx(stdscr, height, width);
+
+    char enterNamePrompt[100];
+    sprintf(enterNamePrompt, "ENTER NAME (MAX %d):", NAME_MAX_LENGTH);
+
+
+    char buf[NAME_MAX_LENGTH + 1];
+    buf[0] = '\x00';
+
+    echo();
+    curs_set(1);
+
+    do {
+        erase();
+        sprintf(buf, "SCORE: %d", game->score);
+        mvprintw(2, (width - strlen(buf)) / 2, buf);
+        mvprintw(4, (width - strlen(enterNamePrompt)) / 2, enterNamePrompt);
+        mvaddch(5, (width - NAME_MAX_LENGTH) / 2 - 1, '<');
+        mvaddch(5, (width + NAME_MAX_LENGTH) / 2, '>');
+        mvgetnstr(5, (width - NAME_MAX_LENGTH) / 2, buf, NAME_MAX_LENGTH);
+        if (strlen(buf) > 0) break;
+        erase();
+        mvprintw(height / 2, (width - strlen("Cannot submit time")) / 2, "Cannot submit time");
+        mvprintw(height / 2 + 1, (width - strlen("Name cannot be empty")) / 2, "Name cannot be empty");
+        mvprintw(height / 2 + 1, (width - strlen("Press any key to try again")) / 2, "Press any key to try again");
+        refresh();
+        getch();
+    } while (1);
+
+    curs_set(0);
+    noecho();
+    buf[NAME_MAX_LENGTH] = '\x00';
+
+    leaderboardSubmitScore(buf, game->score, t);
+
+    return;
+}
