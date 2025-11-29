@@ -4,9 +4,7 @@ This application:
 - Manages a sqlite database of high-score leaderboards for certain terminal games
 - Runs a webserver which allows users to fetch data from the leaderboards, as well as post their scores to the leaderboards
 
-It is meant to be deployed as an API endpoint for a personal website which is under development.
-
-**(IN PROGRESS! Not yet functional)**
+It is deployed at the `/leaderboards` endpoint of my [personal website](https://samdowney.dev). (Availability of the endpoint, and website itself, is not guaranteed! Especially while I'm working on things...)
 
 # API usage
 ## **Fetch** leaderboard information
@@ -16,7 +14,7 @@ There are currently 2 ways to fetch leaderboard information, by requesting GET r
 - `<server>/leaderboards/game/<game>` will fetch the top 10 times for the specified game.
 - `<server>/leaderboards/player/<playername>` will fetch all posted leaderboard times for all games matching the specified player's name.
 
-The format of the response will be the same regardless of how the API is accessed: a JSON object with 'game: [entry1, entry2, ...]' pairs, where `entry` is itself JSON with a `name` value, `time` value, and `score` value.
+The format of the response will be the same regardless of how these endpoints are accessed: a JSON object with 'game: [entry1, entry2, ...]' pairs, where `entry` is itself JSON with a `name` value, `time` value, and `score` value.
 
 Example:
 
