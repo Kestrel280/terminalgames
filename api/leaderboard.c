@@ -212,7 +212,7 @@ bool leaderboardPost(ConnectionInfo* ci) {
         json_object_put(jobj);
         return false;
     }
-    sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@name"), name, strlen(name), SQLITE_STATIC); // SQLITE_STATIC = i am responsible for memory of the string
+    sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@name"), name, strlen(name) > 12 ? NAME_MAX_LENGTH : strlen(name), SQLITE_STATIC); // enforce max name length
     sqlite3_bind_int64(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@score"), score);
     sqlite3_bind_int64(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@time"), time);
 

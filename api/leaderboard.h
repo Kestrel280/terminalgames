@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include "server.h"
 
+#define NAME_MAX_LENGTH 12
+
 // ordering of the columns in leaderboard database tables. consistent across all game tables
 enum {
     COLUMN_GAME,
