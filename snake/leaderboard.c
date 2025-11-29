@@ -2,6 +2,7 @@
 #include <ncurses.h>
 #include <string.h>
 #include <stdlib.h>
+#include <json-c/json_tokener.h>
 #include "leaderboard.h"
 
 /* 
@@ -61,12 +62,37 @@ void leaderboardDisplay() {
     res = curl_easy_perform(curl);
     if (res != CURLE_OK) { printError("Failed to fetch leaderboard data; server may be offline"); curl_global_cleanup(); return; }
 
-    printw("%s", string.data);
+    json_object* jobj = json_tokener_parse(string.data);
+    if (jobj == NULL) { printError("Failed to parse leaderboard data; server may have returned error"); curl_global_cleanup(); return; }
+
+    json_object* jarr = json_object_object_get(jobj, "snake");
+    if (jarr == NULL) { printError("No entries in leaderboard data!"); curl_global_cleanup(); return; }
+
+    size_t jsize = json_object_array_length(jarr);
+
+    mvprintw(2, (width - 28) / 2, "%12s %8s %8s", "NAME", "SCORE", "TIME");
+    int i = 0;
+    for (; i < jsize; i++) {
+        json_object* jel = json_object_array_get_idx(jarr, i);
+        json_object* jname = json_object_object_get(jel, "name");
+        json_object* jscore = json_object_object_get(jel, "score");
+        json_object* jtime = json_object_object_get(jel, "time");
+        const char* name = json_object_get_string(jname);
+        int score = json_object_get_int(jscore);
+        int time = json_object_get_int(jtime);
+        mvprintw(4 + i, (width - 28) / 2 - 4, "%2d.", i + 1);
+        mvprintw(4 + i, (width - 28) / 2, "%12s %8d %8d", name, score, time);
+    }
+
+    mvprintw(6 + i, (width - strlen(pressAnyButtonStr)) / 2, "%s", pressAnyButtonStr);
+
+    //printw("%s", string.data);
     getch();
 
     free(string.data);
     curl_easy_cleanup(curl);
     curl_global_cleanup();
+    json_object_put(jobj);
 
     return;
 }

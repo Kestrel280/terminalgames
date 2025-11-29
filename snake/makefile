@@ -9,7 +9,7 @@ SRCS = main.c snake.c leaderboard.c menu.c bitpack.c
 CFLAGS =
 
 snake: $(SRCS:%.c=%.o) # depends on .o files corresponding to all SRCS
-	gcc *.o -o snake -lncurses -lcurl $(CFLAGS)
+	gcc *.o -o snake -lncurses -lcurl -ljson-c $(CFLAGS)
 
 # generate dependency rules using gcc -MM: code.o depends on code.c and any non-system #includes in code.c
 $(DEPSFILE): $(SRCS)
