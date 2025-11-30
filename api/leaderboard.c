@@ -154,7 +154,8 @@ bool leaderboardGet(ConnectionInfo* ci, char** pOut) {
     }
 
     free(errOut);
-    return out;
+    *pOut = out;
+    return true;
 }
 
 bool leaderboardPost(ConnectionInfo* ci) {
