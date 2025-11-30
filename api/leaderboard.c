@@ -18,7 +18,7 @@ const char* _templateGetPlayerStmt = "SELECT * FROM %s WHERE name=@name";
 const char* _templateGetGameStmt = "SELECT * FROM %s ORDER BY score DESC, time ASC";
 extern sqlite3* db;
 
-char* leaderboardGet(ConnectionInfo* ci) {
+bool leaderboardGet(ConnectionInfo* ci, char** pOut) {
     char* out;
 
     // prepare error output in case we need it
@@ -28,7 +28,7 @@ char* leaderboardGet(ConnectionInfo* ci) {
     memcpy(errOut, err, len);
     errOut[len] = '\x00';
     
-    if (ci->resourceChainSize != 3 || (!SAME_STRING(ci->resourceChain[1], "player") && !SAME_STRING(ci->resourceChain[1], "game"))) return errOut;
+    if (ci->resourceChainSize != 3 || (!SAME_STRING(ci->resourceChain[1], "player") && !SAME_STRING(ci->resourceChain[1], "game"))) { *pOut = errOut; return false; }
 
     sqlite3_stmt* getStmt;
 
@@ -62,7 +62,8 @@ char* leaderboardGet(ConnectionInfo* ci) {
         
         if (sqlite3_prepare_v2(db, _getStmt, -1, &getStmt, NULL) != SQLITE_OK) {
             LOG("error compiling SQL get-player statement\n");
-            return errOut;
+            *pOut = errOut;
+            return false;
         }
         sqlite3_bind_text(getStmt, sqlite3_bind_parameter_index(getStmt, "@name"), playerName, strlen(playerName), SQLITE_STATIC);
         EXPAND_AND_LOG_SQL_STATEMENT(getStmt);
@@ -111,7 +112,8 @@ char* leaderboardGet(ConnectionInfo* ci) {
         if (sqlite3_prepare_v2(db, _getStmt, -1, &getStmt, NULL) != SQLITE_OK) {
             LOG("error compiling SQL get-game statement\n");
             free(_getStmt);
-            return errOut;
+            *pOut = errOut;
+            return false;
         }
         EXPAND_AND_LOG_SQL_STATEMENT(getStmt);
 

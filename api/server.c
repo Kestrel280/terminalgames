@@ -37,9 +37,9 @@ void processRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
     struct MHD_Response* r;
     switch (ci->connectionType) {
         case CONNECTION_TYPE_GET: {
-            rtext = leaderboardGet(ci);
+            bool success = leaderboardGet(ci, &rtext);
             r = MHD_create_response_from_buffer_with_free_callback(strlen(rtext), rtext, &free);
-            MHD_add_response_header(r, "content-type", "application/json");
+            MHD_add_response_header(r, "content-type", success ? "application/json" : "text/plain");
             break;
         }
         case CONNECTION_TYPE_POST: {
