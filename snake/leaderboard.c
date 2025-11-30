@@ -15,7 +15,7 @@ const char* leaderboardGetUrl = "https://samdowney.dev/leaderboards/game/snake";
 const char* leaderboardPostUrl = "https://samdowney.dev/leaderboards";
 
 static int width, height;
-static const char* pressAnyButtonStr = "Press any button to return to menu";
+static const char* pressAnyButtonStr = "Press any key to return to menu";
 
 size_t curlWriteCallback(void* data, size_t sz, size_t count, void* hStr) {
     String* pStr = (String*)hStr;
@@ -41,11 +41,15 @@ size_t curlReadCallback(void* buf, size_t sz, size_t count, void* hOb) {
 }
 
 void printError(const char* errStr, const char* reason) {
+    int tmp = is_nodelay(stdscr);
+    nodelay(stdscr, false);
+    clear();
     mvprintw(height / 2, (width - strlen(errStr)) / 2, "%s", errStr);
     mvprintw(height / 2 + 1, (width - (strlen(reason))) / 2, "%s", reason);
     mvprintw(height / 2 + 2, (width - (strlen(pressAnyButtonStr))) / 2, "%s", pressAnyButtonStr);
-    getch();
     refresh();
+    getch();
+    nodelay(stdscr, tmp);
 }
 
 void leaderboardDisplay() {
@@ -113,7 +117,8 @@ void leaderboardDisplay() {
 }
 
 void leaderboardSubmitScore(const char* name, uint64_t score, time_t time) {
-    static const char* errStr = "Could not submit to leaderboard";
+    getmaxyx(stdscr, height, width);
+    static const char* errStr = "Submission failed";
     json_object* jobj = json_object_new_object();
     if (!jobj) { printError(errStr, "Memory error with json-c"); return; }
 
@@ -138,9 +143,9 @@ void leaderboardSubmitScore(const char* name, uint64_t score, time_t time) {
     ob.remaining = strlen(data);
 
     CURLcode res = curl_global_init(CURL_GLOBAL_ALL);
-    if (res) { printError(errStr, "Failed to initialize CURL environment"); return; }
+    if (res) { printError(errStr, "Failed to initialize CURL environment"); curl_global_cleanup(); json_object_put(jobj); return; }
     CURL* curl = curl_easy_init();
-    if(!curl) { printError(errStr, "Failed to create CURL object"); return; }
+    if(!curl) { printError(errStr, "Failed to create CURL object"); curl_global_cleanup(); json_object_put(jobj); return; }
 
     curl_easy_setopt(curl, CURLOPT_URL, leaderboardPostUrl);
     curl_easy_setopt(curl, CURLOPT_POST, 1L);
@@ -150,7 +155,12 @@ void leaderboardSubmitScore(const char* name, uint64_t score, time_t time) {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)ob.remaining);
 
     res = curl_easy_perform(curl);
-    if (res != CURLE_OK) { printError(errStr, "Unable to POST"); curl_global_cleanup(); return; }
+    if (res != CURLE_OK) { printError(errStr, "Unable to POST"); curl_easy_cleanup(curl); curl_global_cleanup(); json_object_put(jobj); return; }
+    long rcode;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &rcode);
+    if (rcode != 200L) { char buf[128]; sprintf(buf, "Unable to POST: error %ld (is the API running?)", rcode); printError(errStr, buf); curl_easy_cleanup(curl); curl_global_cleanup(); json_object_put(jobj); return; }
+
+    printError("CONGRATULATIONS!", "YOUR SCORE WAS SUBMITTED");
 
     curl_easy_cleanup(curl);
     curl_global_cleanup();
