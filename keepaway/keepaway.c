@@ -205,7 +205,7 @@ void gameTick(Game* game, uint64_t dtUs) {
         game->rg.curPos = game->rg.path[game->rg.pathProgress++];
         if (game->rg.curPos == game->endPos) gameOver(game);
         game->rg.basePatience -= game->rg.basePatience / (70 - (game->difficulty * 20));
-        game->rg.basePatience = game->rg.basePatience < 200000l ? 200000l : game->rg.basePatience; // cap rg speed at 5 moves per second
+        game->rg.basePatience = game->rg.basePatience < 125000 ? 125000 : game->rg.basePatience; // cap rg speed at 5 moves per second
         game->rg.patience += game->rg.basePatience;
         game->score += 10000000l / game->rg.basePatience * (game->difficulty + 1);
         game->needsDraw = true;
