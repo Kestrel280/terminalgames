@@ -28,7 +28,6 @@ char* leaderboardGet(ConnectionInfo* ci) {
     memcpy(errOut, err, len);
     errOut[len] = '\x00';
     
-    //char* request = ci->buf;
     if (ci->resourceChainSize != 3 || (!SAME_STRING(ci->resourceChain[1], "player") && !SAME_STRING(ci->resourceChain[1], "game"))) return errOut;
 
     sqlite3_stmt* getStmt;
@@ -46,7 +45,7 @@ char* leaderboardGet(ConnectionInfo* ci) {
         reqlen += 2; // extra char for ; and null terminator
         
         // allocate space for the query statement
-        char* _getStmt = (char*)malloc(sizeof(char) * (reqlen + 1));
+        char _getStmt[reqlen + 1];
 
         // add each individual game query to the query statement
         for (int i = 0, pc = 0; i < (sizeof(GAMES) / sizeof(char*)); i++) {
@@ -60,13 +59,9 @@ char* leaderboardGet(ConnectionInfo* ci) {
 
         _getStmt[reqlen - 2] = ';';
         _getStmt[reqlen - 1] = '\x00';
-
         
-        LOG("_getStmt (reqlen = %d): %s\n", reqlen, _getStmt);
-
         if (sqlite3_prepare_v2(db, _getStmt, -1, &getStmt, NULL) != SQLITE_OK) {
             LOG("error compiling SQL get-player statement\n");
-            free(_getStmt);
             return errOut;
         }
         sqlite3_bind_text(getStmt, sqlite3_bind_parameter_index(getStmt, "@name"), playerName, strlen(playerName), SQLITE_STATIC);
@@ -79,7 +74,7 @@ char* leaderboardGet(ConnectionInfo* ci) {
             int score = sqlite3_column_int(getStmt, COLUMN_SCORE);
             int time = sqlite3_column_int(getStmt, COLUMN_TIME);
             const char* game = (const char*)sqlite3_column_text(getStmt, COLUMN_GAME); // TODO sqlite returns UTF-8; we are coercing into ASCII because game names are guaranteed to be ASCII (hopefully)
-            LOG("\t\t player %s has score %d at time %d in game %s\n", playerName, score, time, game);
+            //LOG("\t\t player %s has score %d at time %d in game %s\n", playerName, score, time, game);
 
             json_object* jgameobj = json_object_object_get(jobj, game);
             if (jgameobj == NULL) { // create an array of entries for this game
@@ -104,7 +99,6 @@ char* leaderboardGet(ConnectionInfo* ci) {
         out[sz] = '\x00';
 
         //clean up
-        free(_getStmt);
         json_object_put(jobj);
         sqlite3_finalize(getStmt);
     }
@@ -129,7 +123,7 @@ char* leaderboardGet(ConnectionInfo* ci) {
             int score = sqlite3_column_int(getStmt, COLUMN_SCORE);
             int time = sqlite3_column_int(getStmt, COLUMN_TIME);
             const char* playerName = (const char*)sqlite3_column_text(getStmt, COLUMN_NAME);
-            LOG("\t\t player %s has score %d at time %d in game %s\n", playerName, score, time, gameName);
+            //LOG("\t\t player %s has score %d at time %d in game %s\n", playerName, score, time, gameName);
 
             json_object* jentry = json_object_new_object();
             json_object* jentryName = json_object_new_string(playerName);
@@ -205,7 +199,6 @@ bool leaderboardPost(ConnectionInfo* ci) {
     // construct SQL insert-into statement
     char _insertStmt[strlen(_templateInsertStmt) + (2 * strlen(game))];
     sprintf(_insertStmt, _templateInsertStmt, game, game);
-    LOG("_insertStmt: %s\n", _insertStmt);
     sqlite3_stmt* insertStmt;
     if (sqlite3_prepare_v2(db, _insertStmt, -1, &insertStmt, NULL) != SQLITE_OK) { // compile statement
         LOG("error compiling SQL insert-into statement\n");

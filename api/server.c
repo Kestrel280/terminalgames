@@ -39,17 +39,18 @@ void processRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
         case CONNECTION_TYPE_GET: {
             rtext = leaderboardGet(ci);
             r = MHD_create_response_from_buffer_with_free_callback(strlen(rtext), rtext, &free);
+            MHD_add_response_header(r, "content-type", "application/json");
             break;
         }
         case CONNECTION_TYPE_POST: {
             rtext = leaderboardPost(ci) ? "successfully posted to leaderboard" : "failed to post to leaderboard: check API spec";
             r = MHD_create_response_from_buffer(strlen(rtext), rtext, MHD_RESPMEM_PERSISTENT);
+            MHD_add_response_header(r, "content-type", "text/plain");
             break;
         }
         default: QUEUE_ERROR_RESPONSE("http method not supported"); return;
     }
     LOG("\t responding with <%s>\n", rtext);
-    MHD_add_response_header(r, "content-type", "application/json");
     MHD_queue_response(connection, MHD_HTTP_OK, r);
     MHD_destroy_response(r);
 }
@@ -101,9 +102,11 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
 
         // -- subresource collection clean up
         free(urlCpy);
+        /*
         LOG("numResources = %d: ", numResources);
         for (int i = 0; i < ci->resourceChainSize; i++) LOG("%s . ", ci->resourceChain[i]);
         LOG("\n");
+        */
 
         if (strcmp(method, "GET") == 0) ci->connectionType = CONNECTION_TYPE_GET;
         else if (strcmp(method, "POST") == 0) ci->connectionType = CONNECTION_TYPE_POST;
