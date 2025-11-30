@@ -29,7 +29,8 @@ MenuOption menu() {
     _menuDraw(choice);
 
     while (1) {
-        switch (int ch = getch()) {
+        int ch = getch();
+        switch (ch) {
             case KEY_UP: choice--; break;
             case KEY_DOWN: choice++; break;
             case '\n': return choice;

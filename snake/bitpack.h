@@ -2,6 +2,7 @@
 #define BITPACK_H
 
 #include <inttypes.h>
+#include <stdbool.h>
 
 typedef uint64_t bitpack_el;
 typedef struct _bitpack BitPack;
