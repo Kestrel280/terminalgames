@@ -5,6 +5,8 @@
 #include <json-c/json_tokener.h>
 #include "leaderboard.h"
 
+#define LOG(...) fprintf(stderr, __VA_ARGS__)
+
 /* 
  * logic here is simple enough that it's not factored out to be reusable --
  * just setting up a CURL request, executing, parsing JSON, and displaying.
@@ -71,6 +73,7 @@ void leaderboardDisplay() {
     string.capacity = STRING_BASE_CAPACITY;
     string.size = 0;
     curl_easy_setopt(curl, CURLOPT_URL, leaderboardGetUrl);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &string);
@@ -80,7 +83,8 @@ void leaderboardDisplay() {
     json_object* jobj = json_tokener_parse(string.data);
     if (jobj == NULL) { printError(errStr, "Failed to parse leaderboard data; server may have returned error"); curl_global_cleanup(); return; }
 
-    json_object* jarr = json_object_object_get(jobj, "snake");
+    json_object* jarr;
+    json_object_object_get_ex(jobj, "snake", &jarr);
     if (jarr == NULL) { printError(errStr, "No entries in leaderboard data!"); curl_global_cleanup(); return; }
 
     size_t jsize = json_object_array_length(jarr);
@@ -88,13 +92,14 @@ void leaderboardDisplay() {
     mvprintw(2, (width - 45) / 2, "%12s %12s   %20s", "NAME", "SCORE", "TIME");
     int i = 0;
     for (; i < jsize; i++) {
+        json_object *jname, *jscore, *jtime;
         json_object* jel = json_object_array_get_idx(jarr, i);
-        json_object* jname = json_object_object_get(jel, "name");
-        json_object* jscore = json_object_object_get(jel, "score");
-        json_object* jtime = json_object_object_get(jel, "time");
+        json_object_object_get_ex(jel, "name", &jname);
+        json_object_object_get_ex(jel, "score", &jscore);
+        json_object_object_get_ex(jel, "time", &jtime);
         const char* name = json_object_get_string(jname);
-        uint64_t score = json_object_get_uint64(jscore);
-        time_t t = (time_t)json_object_get_uint64(jtime);
+        uint64_t score = json_object_get_int64(jscore);
+        time_t t = (time_t)json_object_get_int64(jtime);
         struct tm* ti;
         ti = localtime(&t);
         char ft[18]; // formatted time
@@ -128,8 +133,8 @@ void leaderboardSubmitScore(const char* name, uint64_t score, time_t time) {
 
     json_object* jentry = json_object_new_object();
     json_object* jname = json_object_new_string(name);
-    json_object* jscore = json_object_new_uint64(score);
-    json_object* jtime = json_object_new_uint64(time);
+    json_object* jscore = json_object_new_int64(score);
+    json_object* jtime = json_object_new_int64(time);
 
     if (!(jentry && jname && jscore && jtime)) { printError(errStr, "Memory error with json-c"); return; }
     json_object_object_add(jentry, "name", jname);
@@ -148,6 +153,7 @@ void leaderboardSubmitScore(const char* name, uint64_t score, time_t time) {
     if(!curl) { printError(errStr, "Failed to create CURL object"); curl_global_cleanup(); json_object_put(jobj); return; }
 
     curl_easy_setopt(curl, CURLOPT_URL, leaderboardPostUrl);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_POST, 1L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_READFUNCTION, curlReadCallback);
@@ -155,7 +161,7 @@ void leaderboardSubmitScore(const char* name, uint64_t score, time_t time) {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)ob.remaining);
 
     res = curl_easy_perform(curl);
-    if (res != CURLE_OK) { printError(errStr, "Unable to POST"); curl_easy_cleanup(curl); curl_global_cleanup(); json_object_put(jobj); return; }
+    if (res != CURLE_OK) { LOG("POST error code: %d\n", res); printError(errStr, "Unable to POST"); curl_easy_cleanup(curl); curl_global_cleanup(); json_object_put(jobj); return; }
     long rcode;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &rcode);
     if (rcode != 200L) { char buf[128]; sprintf(buf, "Unable to POST: error %ld (is the API running?)", rcode); printError(errStr, buf); curl_easy_cleanup(curl); curl_global_cleanup(); json_object_put(jobj); return; }
