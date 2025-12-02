@@ -10,7 +10,7 @@ The `/api` folder contains a (WIP) webserver application used for maintaining a 
 To build a project, invoke `make` from the project's directory. GCC and ncurses are required to build all games; games with a leaderboard additionally require libcurl and json-c.
 
 ### Windows
-To build on Windows, use cygwin to install `make`, `gcc-core`, `ncurses-devel`, `libcurl4` + `libcurl-devel`, and `libjson-c-devel`. (`json-c` and `libcurl` are not required for games which do not support access to the leaderboards api.)
+(NOTE: as of commit 5fef47e, Windows compilation is untested; to be repaired in the future) | To build on Windows, use cygwin to install `make`, `gcc-core`, `ncurses-devel`, `libcurl4` + `libcurl-devel`, and `libjson-c-devel`. (`json-c` and `libcurl` are not required for games which do not support access to the leaderboards api.)
 
 ## Notes
 - [ncurses leaks memory by design](https://invisible-island.net/ncurses/ncurses.faq.html#config_leaks).
