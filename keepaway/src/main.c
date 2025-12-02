@@ -8,7 +8,6 @@
 
 const char* leaderboardGetUrl = "https://samdowney.dev/leaderboards/game/keepaway";
 const char* leaderboardPostUrl = "https://samdowney.dev/leaderboards";
-const char* gameName = "keepaway";
 
 void initColors() {
     if (has_colors() == false) { fprintf(stderr, "failed to init colors\n"); return; }

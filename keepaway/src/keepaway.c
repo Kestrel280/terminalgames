@@ -6,12 +6,15 @@
 #include "keepaway.h"
 #include "mainmenu.h"
 #include "keepaway.h"
+#include "leaderboard.h"
 
 #ifdef DEBUG
 #define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define DEBUG_PRINT(...)
 #endif
+
+const char* gameName = "keepaway";
 
 /* Helpers */
 static inline int gridToIdx(int row, int col, int numCols) { return (col + (row * numCols)); }
@@ -73,6 +76,7 @@ void gamePlay(int nrows, int ncols, int difficulty) {
     sprintf(buf, "GAME OVER | SCORE = %d | PRESS ANY KEY", game.score);
     drawOverlay(buf);
     getch();
+    leaderboardSubmitScore(gameName, game.score);
     gameDestroy(&game);
     return;
 }

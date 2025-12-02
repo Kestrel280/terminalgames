@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <json-c/json_tokener.h>
 #include "../include/leaderboard.h"
+#include <time.h>
+
 
 // TODO move this to somewhere central
 #define LOG(...) do {fprintf(stderr, __FILE__); fprintf(stderr, __VA_ARGS__); } while (0)
@@ -119,8 +121,44 @@ void leaderboardDisplay(const char* gameName) {
     return;
 }
 
-void leaderboardSubmitScore(const char* gameName, const char* name, uint64_t score, time_t time) {
+void leaderboardSubmitScore(const char* gameName, uint64_t score) {
+    // get current time and prompt for name
+    time_t t = time(NULL);
+
+    // operate in stdscr space since game window might be too small
     getmaxyx(stdscr, height, width);
+
+    char enterNamePrompt[100];
+    sprintf(enterNamePrompt, "ENTER NAME (MAX %d):", NAME_MAX_LENGTH);
+
+    char playerName[NAME_MAX_LENGTH + 1];
+    playerName[0] = '\x00';
+
+    echo();
+    curs_set(1);
+    do {
+        erase();
+        sprintf(playerName, "SCORE: %ld", score);
+        mvprintw(2, (width - strlen(playerName)) / 2, playerName);
+        mvprintw(4, (width - strlen(enterNamePrompt)) / 2, enterNamePrompt);
+        mvaddch(5, (width - NAME_MAX_LENGTH) / 2 - 1, '<');
+        mvaddch(5, (width + NAME_MAX_LENGTH) / 2, '>');
+        mvgetnstr(5, (width - NAME_MAX_LENGTH) / 2, playerName, NAME_MAX_LENGTH);
+        if (strlen(playerName) > 0) break;
+        erase();
+        mvprintw(height / 2, (width - strlen("Cannot submit time")) / 2, "Cannot submit time");
+        mvprintw(height / 2 + 1, (width - strlen("Name cannot be empty")) / 2, "Name cannot be empty");
+        mvprintw(height / 2 + 1, (width - strlen("Press any key to try again")) / 2, "Press any key to try again");
+        refresh();
+        getch();
+    } while (1);
+
+    curs_set(0); // TODO this makes the assumption that the game wants cursor and echo off. should store previous states and restore them
+    noecho();
+    playerName[NAME_MAX_LENGTH] = '\x00';
+
+    /* post to leaderboard */
+
     static const char* errStr = "Submission failed";
     json_object* jobj = json_object_new_object();
     if (!jobj) { printError(errStr, "Memory error with json-c"); return; }
@@ -130,9 +168,9 @@ void leaderboardSubmitScore(const char* gameName, const char* name, uint64_t sco
     json_object_object_add(jobj, "game", jgame);
 
     json_object* jentry = json_object_new_object();
-    json_object* jname = json_object_new_string(name);
+    json_object* jname = json_object_new_string(playerName);
     json_object* jscore = json_object_new_int64(score);
-    json_object* jtime = json_object_new_int64(time);
+    json_object* jtime = json_object_new_int64(t);
 
     if (!(jentry && jname && jscore && jtime)) { printError(errStr, "Memory error with json-c"); return; }
     json_object_object_add(jentry, "name", jname);

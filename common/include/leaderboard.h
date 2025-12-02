@@ -3,6 +3,7 @@
 
 #include <time.h>
 #define STRING_BASE_CAPACITY 8
+#define NAME_MAX_LENGTH 12
 
 extern const char* leaderboardGetUrl;
 extern const char* leaderboardPostUrl;
@@ -33,6 +34,6 @@ void printError(const char* errStr, const char* reason);
 void leaderboardDisplay(const char* gameName);
 
 // monolith entrypoint to construct JSON message and CURL to leaderboard endpoint
-void leaderboardSubmitScore(const char* gameName, const char* name, uint64_t score, time_t time);
+void leaderboardSubmitScore(const char* gameName, uint64_t score);
 
 #endif
