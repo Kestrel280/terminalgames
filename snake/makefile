@@ -1,6 +1,7 @@
 BUILDDIR=build
 SRCDIR=src
 INCLUDEDIR=include
+LIBINCLUDEDIR=../common/include
 CC=gcc
 CFLAGS=
 ifeq ($(OS), Windows_NT)
@@ -16,20 +17,20 @@ ifeq ($(OS), Windows_NT)
 endif
 
 DEPSFILE = .deps
-SRCS = main.c snake.c menu.c bitpack.c
+SRCS = main.c snake.c menu.c
 
 snake: $(SRCS:%.c=$(BUILDDIR)/%.o) # depends on .o files corresponding to all SRCS
-	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o snake -lncurses -lcurl -ljson-c -L../common/lib -lleaderboard
+	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o snake -lncurses -lcurl -ljson-c -L../common/lib -lleaderboard -lbitpack
 
 # generate dependency rules using gcc -MM: code.o depends on code.c and any non-system #includes in code.c
 $(DEPSFILE): $(SRCDIR)/*.c
 	rm -f $(DEPSFILE)
-	$(CC) -MM -I$(INCLUDEDIR) $^ $(CFLAGS) > $(DEPSFILE)
+	$(CC) -MM -I$(LIBINCLUDEDIR) -I$(INCLUDEDIR) $^ $(CFLAGS) > $(DEPSFILE)
 include $(DEPSFILE)
 
 # standard obj rules: requirements from DEPSFILE are merged
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) -I$(INCLUDEDIR) -c $< -o $@
+	$(CC) $(CFLAGS) -I$(INCLUDEDIR) -I$(LIBINCLUDEDIR) -c $< -o $@
 
 clean:
 	rm -f $(BUILDDIR)/*.o $(BUILDDIR)/*.ostat snake *.exe $(DEPSFILE)

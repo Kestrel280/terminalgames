@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "snake.h"
 #include "menu.h"
-#include "../../common/include/leaderboard.h"
+#include "leaderboard.h"
 
 const char* leaderboardGetUrl = "https://samdowney.dev/leaderboards/game/snake";
 const char* leaderboardPostUrl = "https://samdowney.dev/leaderboards";
