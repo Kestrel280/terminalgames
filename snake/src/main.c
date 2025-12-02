@@ -4,8 +4,8 @@
 #include "menu.h"
 #include "leaderboard.h"
 
-const char* leaderboardGetUrl = "https://samdowney.dev/leaderboards/game/snake";
-const char* leaderboardPostUrl = "https://samdowney.dev/leaderboards";
+const char* leaderboardGetUrl = "https://api.samdowney.dev/leaderboards/game/snake";
+const char* leaderboardPostUrl = "https://api.samdowney.dev/leaderboards";
 const char* gameName = "snake";
 
 #define REGISTER_PIXEL(id, fg, bg, c) init_pair(id, fg, bg); gfxChars[id] = c;
