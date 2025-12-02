@@ -9,7 +9,8 @@
 #define EXPAND_AND_LOG_SQL_STATEMENT(stmt) do { char* __expStr__ = sqlite3_expanded_sql(stmt); LOG("\t expanded SQL statement: '%s'\n", __expStr__); sqlite3_free(__expStr__); } while(0)
 
 // games which can be queried
-const char* GAMES[] = { "snake" , "anotherfakegame" };
+const char* GAMES[] = { "snake" , "keepaway" , "anotherfakegame" };
+const char* leaderboardEndpoint = "leaderboards";
 
 static inline bool SAME_STRING(const char* s1, const char* s2) { return (strcmp(s1, s2) == 0); }
 
@@ -22,7 +23,7 @@ bool leaderboardGet(ConnectionInfo* ci, char** pOut) {
     char* out;
 
     // prepare error output in case we need it
-    const char* err = "invalid endpoint or GET not supported for this endpoint";
+    const char* err = "leaderboards api: invalid endpoint or GET not supported for this endpoint";
     int len = strlen(err);
     char* errOut = (char*)malloc(sizeof(char*) * (len + 1));
     memcpy(errOut, err, len);

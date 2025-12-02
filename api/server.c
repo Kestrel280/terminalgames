@@ -35,20 +35,26 @@ void processRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
 
     char* rtext;
     struct MHD_Response* r;
-    switch (ci->connectionType) {
-        case CONNECTION_TYPE_GET: {
-            bool success = leaderboardGet(ci, &rtext);
-            r = MHD_create_response_from_buffer_with_free_callback(strlen(rtext), rtext, &free);
-            MHD_add_response_header(r, "content-type", success ? "application/json" : "text/plain");
-            break;
+    if (ci->resourceChainSize == 0) { QUEUE_ERROR_RESPONSE("no API endpoint here"); return; }
+
+    if (strcmp(ci->resourceChain[0], leaderboardEndpoint) == 0) {
+        switch (ci->connectionType) {
+            case CONNECTION_TYPE_GET: {
+                bool success = leaderboardGet(ci, &rtext);
+                r = MHD_create_response_from_buffer_with_free_callback(strlen(rtext), rtext, &free);
+                MHD_add_response_header(r, "content-type", success ? "application/json" : "text/plain");
+                break;
+            }
+            case CONNECTION_TYPE_POST: {
+                rtext = leaderboardPost(ci) ? "successfully posted to leaderboard" : "failed to post to leaderboard: check API spec";
+                r = MHD_create_response_from_buffer(strlen(rtext), rtext, MHD_RESPMEM_PERSISTENT);
+                MHD_add_response_header(r, "content-type", "text/plain");
+                break;
+            }
+            default: QUEUE_ERROR_RESPONSE("http method not supported"); return;
         }
-        case CONNECTION_TYPE_POST: {
-            rtext = leaderboardPost(ci) ? "successfully posted to leaderboard" : "failed to post to leaderboard: check API spec";
-            r = MHD_create_response_from_buffer(strlen(rtext), rtext, MHD_RESPMEM_PERSISTENT);
-            MHD_add_response_header(r, "content-type", "text/plain");
-            break;
-        }
-        default: QUEUE_ERROR_RESPONSE("http method not supported"); return;
+    } else {
+        QUEUE_ERROR_RESPONSE("no API endpoint here"); return;
     }
     LOG("\t responding with <%s>\n", rtext);
     MHD_queue_response(connection, MHD_HTTP_OK, r);
@@ -62,10 +68,11 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
     //LOG("%s '%s' request for '%s' using version '%s'\n", *req_cls ? "Followup" : "New", method, url, version);
 
     // check that they're accessing /leaderboards...; if not, respond with error
-    if (strncmp(url, urlEndpoint, strlen(urlEndpoint)) != 0) {
+    /*if (strncmp(url, urlEndpoint, strlen(urlEndpoint)) != 0) {
         QUEUE_ERROR_RESPONSE("improper attempt to access leaderboards API");
         return MHD_YES;
     }
+    */
 
     // is this a new connection? if so, create a ConnectionInfo for it; which will be freed by completeRequest()
     if (*req_cls == NULL) {

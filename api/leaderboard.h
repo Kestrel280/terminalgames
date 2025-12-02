@@ -6,6 +6,8 @@
 
 #define NAME_MAX_LENGTH 12
 
+extern const char* leaderboardEndpoint;
+
 // ordering of the columns in leaderboard database tables. consistent across all game tables
 enum {
     COLUMN_GAME,
