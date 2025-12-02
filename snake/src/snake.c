@@ -247,7 +247,6 @@ void gameSubmitScore(Game* game) {
     char enterNamePrompt[100];
     sprintf(enterNamePrompt, "ENTER NAME (MAX %d):", NAME_MAX_LENGTH);
 
-
     char buf[NAME_MAX_LENGTH + 1];
     buf[0] = '\x00';
 
@@ -275,7 +274,7 @@ void gameSubmitScore(Game* game) {
     noecho();
     buf[NAME_MAX_LENGTH] = '\x00';
 
-    leaderboardSubmitScore(buf, game->score, t);
+    leaderboardSubmitScore(gameName, buf, game->score, t);
 
     return;
 }

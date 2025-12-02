@@ -6,6 +6,8 @@
 
 #define SNAKE_COOLDOWN 125000l
 #define NAME_MAX_LENGTH 12
+#define GAME_WIDTH 19
+#define GAME_HEIGHT 25
 
 typedef int GameState;
 typedef int Direction;

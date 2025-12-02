@@ -34,4 +34,4 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -I$(INCLUDEDIR) -c $< -o $@
 
 clean:
-	rm -f $(BUILDDIR)/*.o $(DEPSFILE)
+	rm -f $(LIBDIR)/*.a $(BUILDDIR)/*.o $(DEPSFILE)

@@ -52,7 +52,7 @@ void printError(const char* errStr, const char* reason) {
     nodelay(stdscr, tmp);
 }
 
-void leaderboardDisplay() {
+void leaderboardDisplay(const char* gameName) {
     static const char* errStr = "Could not fetch leaderboard:";
 
     getmaxyx(stdscr, height, width);
@@ -82,7 +82,7 @@ void leaderboardDisplay() {
     if (jobj == NULL) { printError(errStr, "Failed to parse leaderboard data; server may have returned error"); curl_global_cleanup(); return; }
 
     json_object* jarr;
-    json_object_object_get_ex(jobj, "snake", &jarr);
+    json_object_object_get_ex(jobj, gameName, &jarr);
     if (jarr == NULL) { printError(errStr, "No entries in leaderboard data!"); curl_global_cleanup(); return; }
 
     size_t jsize = json_object_array_length(jarr);
@@ -119,13 +119,13 @@ void leaderboardDisplay() {
     return;
 }
 
-void leaderboardSubmitScore(const char* name, uint64_t score, time_t time) {
+void leaderboardSubmitScore(const char* gameName, const char* name, uint64_t score, time_t time) {
     getmaxyx(stdscr, height, width);
     static const char* errStr = "Submission failed";
     json_object* jobj = json_object_new_object();
     if (!jobj) { printError(errStr, "Memory error with json-c"); return; }
 
-    json_object* jgame = json_object_new_string("snake");
+    json_object* jgame = json_object_new_string(gameName);
     if (!jgame) { json_object_put(jobj); printError(errStr, "Memory error with json-c"); return; }
     json_object_object_add(jobj, "game", jgame);
 
