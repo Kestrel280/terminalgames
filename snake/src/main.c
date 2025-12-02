@@ -2,7 +2,10 @@
 #include <stdio.h>
 #include "snake.h"
 #include "menu.h"
-#include "leaderboard.h"
+#include "../../common/include/leaderboard.h"
+
+const char* leaderboardGetUrl = "https://samdowney.dev/leaderboards/game/snake";
+const char* leaderboardPostUrl = "https://samdowney.dev/leaderboards";
 
 #define REGISTER_PIXEL(id, fg, bg, c) init_pair(id, fg, bg); gfxChars[id] = c;
 extern char gfxChars[];

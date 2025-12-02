@@ -3,18 +3,16 @@
 #include <string.h>
 #include <stdlib.h>
 #include <json-c/json_tokener.h>
-#include "leaderboard.h"
+#include "../include/leaderboard.h"
 
-#define LOG(...) fprintf(stderr, __VA_ARGS__)
+// TODO move this to somewhere central
+#define LOG(...) do {fprintf(stderr, __FILE__); fprintf(stderr, __VA_ARGS__); } while (0)
 
 /* 
  * logic here is simple enough that it's not factored out to be reusable --
  * just setting up a CURL request, executing, parsing JSON, and displaying.
  * functions are monolithic and there's not much error checking because the stakes are so low.
 */
-
-const char* leaderboardGetUrl = "https://samdowney.dev/leaderboards/game/snake";
-const char* leaderboardPostUrl = "https://samdowney.dev/leaderboards";
 
 static int width, height;
 static const char* pressAnyButtonStr = "Press any key to return to menu";
