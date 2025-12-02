@@ -1,5 +1,9 @@
-CC = gcc
-CFLAGS = 
+BUILDDIR=build
+SRCDIR=src
+INCLUDEDIR=include
+LIBINCLUDEDIR=../common/include
+CC=gcc
+CFLAGS=
 ifeq ($(OS), Windows_NT)
 	CC = x86_64-w64-mingw32-gcc.exe
 	CYGWIN_INCLUDE="C:/cygwin64/usr/include"
@@ -13,27 +17,29 @@ ifeq ($(OS), Windows_NT)
 endif
 
 DEPSFILE = .deps
-SRCS = main.c snake.c leaderboard.c menu.c bitpack.c
+SRCS = main.c snake.c menu.c
 
-snake: $(SRCS:%.c=%.o) # depends on .o files corresponding to all SRCS
-	$(CC) $(CFLAGS) *.o -o snake -lncurses -lcurl -ljson-c
-
-winstatic: $(SRCS:%.c=%.ostat)
-	#$(CC) $(CFLAGS) -static -o snake.exe *.ostat -L$(CYGWIN_LIB) -ljson-c -lcurl -lncurses
-	$(CC) $(CFLAGS) -I$(CURL_INCLUDE) -static -o snake.exe *.ostat -L$(CURL_LIB) -lcurl -lpsl -lbrotlidec -lbrotlicommon -lnghttp2 -lnghttp3 -lngtcp2 -lngtcp2_crypto_libressl -lssh2 -lssl -lcrypto -lz -lzstd -L$(MINGW_LIB) -ljson-c -lws2_32 -lwldap32 -L$(CYGWIN_LIB) -lncurses -L$(CYGWIN_W32_LIB) -lsecur32 -lcrypt32 -lbcrypt -liphlpapi
+snake: $(SRCS:%.c=$(BUILDDIR)/%.o) # depends on .o files corresponding to all SRCS
+	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o snake -lncurses -lcurl -ljson-c -L../common/lib -lleaderboard -lbitpack
 
 # generate dependency rules using gcc -MM: code.o depends on code.c and any non-system #includes in code.c
-$(DEPSFILE): $(SRCS)
+$(DEPSFILE): $(SRCDIR)/*.c
 	rm -f $(DEPSFILE)
-	$(CC) -MM $^ $(CFLAGS) > $(DEPSFILE)
+	$(CC) -MM -I$(LIBINCLUDEDIR) -I$(INCLUDEDIR) $^ $(CFLAGS) > $(DEPSFILE)
 include $(DEPSFILE)
 
-# standard obj rules as well: conflicts are just merged
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-%.ostat: %.c
-	$(CC) $(CFLAGS) -I$(CURL_INCLUDE) -c $< -o $@
+# standard obj rules: requirements from DEPSFILE are merged
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c
+	$(CC) $(CFLAGS) -I$(INCLUDEDIR) -I$(LIBINCLUDEDIR) -c $< -o $@
 
 clean:
-	rm -f *.o *.ostat snake *.exe $(DEPSFILE)
+	rm -f $(BUILDDIR)/*.o $(BUILDDIR)/*.ostat snake *.exe $(DEPSFILE)
+
+# windows static compilation nonsense
+$(BUILDDIR)/%.ostat: $(SRCDIR)/%.c
+	$(CC) $(CFLAGS) -I$(CURL_INCLUDE) -c $< -o $@
+
+winstatic: $(SRCS:%.c=$(BUILDDIR)/%.ostat)
+	#$(CC) $(CFLAGS) -static -o snake.exe *.ostat -L$(CYGWIN_LIB) -ljson-c -lcurl -lncurses
+	$(CC) $(CFLAGS) -I$(CURL_INCLUDE) -static -o snake.exe $(BUILDDIR)/*.ostat -L$(CURL_LIB) -lcurl -lpsl -lbrotlidec -lbrotlicommon -lnghttp2 -lnghttp3 -lngtcp2 -lngtcp2_crypto_libressl -lssh2 -lssl -lcrypto -lz -lzstd -L$(MINGW_LIB) -ljson-c -lws2_32 -lwldap32 -L$(CYGWIN_LIB) -lncurses -L$(CYGWIN_W32_LIB) -lsecur32 -lcrypt32 -lbcrypt -liphlpapi
+

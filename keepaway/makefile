@@ -1,21 +1,29 @@
-CFLAGS = 
+CC=gcc
+CFLAGS=
+SRCDIR=src
+BUILDDIR=build
+INCLUDEDIR=include
+LIBDIR=../common/lib
+LIBINCLUDEDIR=../common/include
+DEPSFILE=.deps
+
 ifeq ($(OS), Windows_NT)
 	CFLAGS += -DNCURSES_STATIC
 endif
 
-all: keepaway
+SRCS=main.c mainmenu.c keepaway.c
 
-%.o: %.c
-	gcc -Wall -c $< -o $@
+keepaway: $(SRCS:%.c=$(BUILDDIR)/%.o)
+	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o $@ -lncurses -lcurl -ljson-c -L$(LIBDIR) -lleaderboard
 
-%.odbg: %.c
-	gcc -Wall -DDEBUG -c $< -o $@
+debug: $(SRCS:%.c=$(BUILDDIR)/%.odbg)
+	$(CC) $(CFLAGS) $(BUILDDIR)/*.odbg -o $@ -lncurses $(CFLAGS)
 
-debug: main.odbg mainmenu.odbg keepaway.odbg
-	gcc -Wall *.odbg -o $@ -lncurses $(CFLAGS)
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c
+	$(CC) $(CFLAGS) -I$(INCLUDEDIR) -I$(LIBINCLUDEDIR) -c $< -o $@
 
-keepaway: main.o mainmenu.o keepaway.o
-	gcc -Wall *.o -o $@ -lncurses $(CFLAGS)
+$(BUILDDIR)/%.odbg: %.c
+	$(CC) $(CFLAGS) -I$(INCLUDEDIR) -I$(LIBINCLUDEDIR) -DDEBUG -c $< -o $@
 
 clean:
-	rm -f *.o *.odbg *.exe keepaway debug
+	rm -f $(BUILDDIR)/*.o $(BUILDDIR)/*.odbg *.exe keepaway debug

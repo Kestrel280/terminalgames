@@ -3,18 +3,18 @@
 #include <string.h>
 #include <stdlib.h>
 #include <json-c/json_tokener.h>
-#include "leaderboard.h"
+#include "../include/leaderboard.h"
+#include <time.h>
 
-#define LOG(...) fprintf(stderr, __VA_ARGS__)
+
+// TODO move this to somewhere central
+#define LOG(...) do {fprintf(stderr, __FILE__); fprintf(stderr, __VA_ARGS__); } while (0)
 
 /* 
  * logic here is simple enough that it's not factored out to be reusable --
  * just setting up a CURL request, executing, parsing JSON, and displaying.
  * functions are monolithic and there's not much error checking because the stakes are so low.
 */
-
-const char* leaderboardGetUrl = "https://samdowney.dev/leaderboards/game/snake";
-const char* leaderboardPostUrl = "https://samdowney.dev/leaderboards";
 
 static int width, height;
 static const char* pressAnyButtonStr = "Press any key to return to menu";
@@ -54,7 +54,7 @@ void printError(const char* errStr, const char* reason) {
     nodelay(stdscr, tmp);
 }
 
-void leaderboardDisplay() {
+void leaderboardDisplay(const char* gameName) {
     static const char* errStr = "Could not fetch leaderboard:";
 
     getmaxyx(stdscr, height, width);
@@ -84,7 +84,7 @@ void leaderboardDisplay() {
     if (jobj == NULL) { printError(errStr, "Failed to parse leaderboard data; server may have returned error"); curl_global_cleanup(); return; }
 
     json_object* jarr;
-    json_object_object_get_ex(jobj, "snake", &jarr);
+    json_object_object_get_ex(jobj, gameName, &jarr);
     if (jarr == NULL) { printError(errStr, "No entries in leaderboard data!"); curl_global_cleanup(); return; }
 
     size_t jsize = json_object_array_length(jarr);
@@ -121,20 +121,56 @@ void leaderboardDisplay() {
     return;
 }
 
-void leaderboardSubmitScore(const char* name, uint64_t score, time_t time) {
+void leaderboardSubmitScore(const char* gameName, uint64_t score) {
+    // get current time and prompt for name
+    time_t t = time(NULL);
+
+    // operate in stdscr space since game window might be too small
     getmaxyx(stdscr, height, width);
+
+    char enterNamePrompt[100];
+    sprintf(enterNamePrompt, "ENTER NAME (MAX %d):", NAME_MAX_LENGTH);
+
+    char playerName[NAME_MAX_LENGTH + 1];
+    playerName[0] = '\x00';
+
+    echo();
+    curs_set(1);
+    do {
+        erase();
+        sprintf(playerName, "SCORE: %ld", score);
+        mvprintw(2, (width - strlen(playerName)) / 2, playerName);
+        mvprintw(4, (width - strlen(enterNamePrompt)) / 2, enterNamePrompt);
+        mvaddch(5, (width - NAME_MAX_LENGTH) / 2 - 1, '<');
+        mvaddch(5, (width + NAME_MAX_LENGTH) / 2, '>');
+        mvgetnstr(5, (width - NAME_MAX_LENGTH) / 2, playerName, NAME_MAX_LENGTH);
+        if (strlen(playerName) > 0) break;
+        erase();
+        mvprintw(height / 2, (width - strlen("Cannot submit time")) / 2, "Cannot submit time");
+        mvprintw(height / 2 + 1, (width - strlen("Name cannot be empty")) / 2, "Name cannot be empty");
+        mvprintw(height / 2 + 1, (width - strlen("Press any key to try again")) / 2, "Press any key to try again");
+        refresh();
+        getch();
+    } while (1);
+
+    curs_set(0); // TODO this makes the assumption that the game wants cursor and echo off. should store previous states and restore them
+    noecho();
+    playerName[NAME_MAX_LENGTH] = '\x00';
+
+    /* post to leaderboard */
+
     static const char* errStr = "Submission failed";
     json_object* jobj = json_object_new_object();
     if (!jobj) { printError(errStr, "Memory error with json-c"); return; }
 
-    json_object* jgame = json_object_new_string("snake");
+    json_object* jgame = json_object_new_string(gameName);
     if (!jgame) { json_object_put(jobj); printError(errStr, "Memory error with json-c"); return; }
     json_object_object_add(jobj, "game", jgame);
 
     json_object* jentry = json_object_new_object();
-    json_object* jname = json_object_new_string(name);
+    json_object* jname = json_object_new_string(playerName);
     json_object* jscore = json_object_new_int64(score);
-    json_object* jtime = json_object_new_int64(time);
+    json_object* jtime = json_object_new_int64(t);
 
     if (!(jentry && jname && jscore && jtime)) { printError(errStr, "Memory error with json-c"); return; }
     json_object_object_add(jentry, "name", jname);

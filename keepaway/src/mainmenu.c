@@ -2,6 +2,7 @@
 #include "mainmenu.h"
 #include "keepaway.h"
 #include "string.h"
+#include "leaderboard.h"
 
 bool doMainMenu() {
     char* difficulties[] = {
@@ -21,6 +22,7 @@ bool doMainMenu() {
         "DIFFICULTY",
         "SIZE",
         "LAYOUT",
+        "VIEW LEADERBOARD",
         "QUIT"
     };
 
@@ -75,7 +77,8 @@ bool doMainMenu() {
                     case 1: difficulty = (difficulty + 1) % ndifficulties; break;
                     case 2: size = (size + 1) % nsizes; break;
                     case 3: portrait = !portrait; break;
-                    case 4: quit = true; break;
+                    case 4: leaderboardDisplay(gameName);
+                    case 5: quit = true; break;
                 }
             }
         }

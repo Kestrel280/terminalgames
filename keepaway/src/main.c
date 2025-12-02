@@ -6,6 +6,9 @@
 #include "keepaway.h"
 #include "mainmenu.h"
 
+const char* leaderboardGetUrl = "https://api.samdowney.dev/leaderboards/game/keepaway";
+const char* leaderboardPostUrl = "https://api.samdowney.dev/leaderboards";
+
 void initColors() {
     if (has_colors() == false) { fprintf(stderr, "failed to init colors\n"); return; }
     start_color();

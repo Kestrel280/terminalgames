@@ -4,6 +4,10 @@
 #include "menu.h"
 #include "leaderboard.h"
 
+const char* leaderboardGetUrl = "https://api.samdowney.dev/leaderboards/game/snake";
+const char* leaderboardPostUrl = "https://api.samdowney.dev/leaderboards";
+const char* gameName = "snake";
+
 #define REGISTER_PIXEL(id, fg, bg, c) init_pair(id, fg, bg); gfxChars[id] = c;
 extern char gfxChars[];
 void initColors() {
@@ -29,7 +33,7 @@ int main(int argc, char* argv[]) {
     while ((mo = menu()) != MENU_OPTION_QUIT) {
         switch (mo) {
             case MENU_OPTION_PLAY: gamePlay(); break;
-            case MENU_OPTION_LEADERBOARD: leaderboardDisplay(); break;
+            case MENU_OPTION_LEADERBOARD: leaderboardDisplay(gameName); break;
         }
     }
     
