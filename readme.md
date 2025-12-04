@@ -7,7 +7,7 @@ The intent behind these games is simple programming practice: projects are suppo
 The `/api` folder contains a (WIP) webserver application used for maintaining a highscores leaderboard for the games, deployed at the `/leaderboards` endpoint of my [personal website](https://samdowney.dev) (availability of the endpoint, and website itself, is not guaranteed! Especially while I'm working on things...). This is mostly an exercise in backend web development, and is a larger, ongoing project running in parallel to the terminal games. The application uses GNU `libmicrohttpd` for running the webserver and `sqlite` for managing the highscores database. See `/api/readme.md` for more information.
 
 ## Building & Dependencies
-To build a project, invoke `make` from the project's directory. GCC and ncurses are required to build all games; games with a leaderboard additionally require libcurl and json-c.
+First, invoke `make` from the common/ directory, to build the common libraries shared across multiple terminal games. Then, to build a specific game, invoke `make` from the project's directory. GCC, ncurses, libcurl, and json-c libraries are required to build.
 
 ### Windows
 (NOTE: as of commit 5fef47e, Windows compilation is untested; to be repaired in the future) | To build on Windows, use cygwin to install `make`, `gcc-core`, `ncurses-devel`, `libcurl4` + `libcurl-devel`, and `libjson-c-devel`. (`json-c` and `libcurl` are not required for games which do not support access to the leaderboards api.)

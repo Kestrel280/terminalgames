@@ -105,7 +105,7 @@ void leaderboardDisplay(const char* gameName) {
         char ft[18]; // formatted time
         strftime(ft, 18, "%R %d %b %Y", ti);
         mvprintw(4 + i, (width - 45) / 2 - 4, "%2d.", i + 1);
-        mvprintw(4 + i, (width - 45) / 2, "%12s %12d   %20s", name, score, ft);
+        mvprintw(4 + i, (width - 45) / 2, "%12s %12lu   %20s", name, score, ft);
     }
 
     mvprintw(6 + i, (width - strlen(pressAnyButtonStr)) / 2, "%s", pressAnyButtonStr);
@@ -139,8 +139,8 @@ void leaderboardSubmitScore(const char* gameName, uint64_t score) {
     do {
         erase();
         sprintf(playerName, "SCORE: %ld", score);
-        mvprintw(2, (width - strlen(playerName)) / 2, playerName);
-        mvprintw(4, (width - strlen(enterNamePrompt)) / 2, enterNamePrompt);
+        mvprintw(2, (width - strlen(playerName)) / 2, "%s", playerName);
+        mvprintw(4, (width - strlen(enterNamePrompt)) / 2, "%s", enterNamePrompt);
         mvaddch(5, (width - NAME_MAX_LENGTH) / 2 - 1, '<');
         mvaddch(5, (width + NAME_MAX_LENGTH) / 2, '>');
         mvgetnstr(5, (width - NAME_MAX_LENGTH) / 2, playerName, NAME_MAX_LENGTH);
