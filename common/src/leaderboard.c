@@ -138,7 +138,7 @@ void leaderboardSubmitScore(const char* gameName, uint64_t score) {
     curs_set(1);
     do {
         erase();
-        sprintf(playerName, "SCORE: %ld", score);
+        sprintf(playerName, "SCORE: %llu", score);
         mvprintw(2, (width - strlen(playerName)) / 2, "%s", playerName);
         mvprintw(4, (width - strlen(enterNamePrompt)) / 2, "%s", enterNamePrompt);
         mvaddch(5, (width - NAME_MAX_LENGTH) / 2 - 1, '<');

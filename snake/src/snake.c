@@ -205,7 +205,7 @@ void gameDraw(Game* game) {
     paintCh(game->window, gfxChars[CG_PICKUP], CG_PICKUP, idxToRow(game->pickupPos, game->width), idxToCol(game->pickupPos, game->width));
 
     char buf[128];
-    sprintf(buf, "%d", game->score);
+    sprintf(buf, "%llu", game->score);
     mvwprintw(game->statsWindow, 0, (game->width - strlen("-- SCORE --")) / 2, "-- SCORE --");
     mvwprintw(game->statsWindow, 1, (game->width - strlen(buf)) / 2, buf);
 

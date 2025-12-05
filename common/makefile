@@ -27,7 +27,7 @@ $(LIBDIR)/lib%.a: $(BUILDDIR)/%.o
 
 $(DEPSFILE): $(SRCDIR)/*.c
 	rm -f $(DEPSFILE)
-	$(CC) -MM -I$(INCLUDEDIR) $(SRCDIR)/* -o $(DEPSFILE)
+	$(CC) -MM -I$(INCLUDEDIR) $(SRCDIR)/* > $(DEPSFILE)
 include $(DEPSFILE)
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c

@@ -5,6 +5,7 @@
 !makefile
 
 # ignore build files
+*.a
 *.o
 *.ostat
 *.odbg
