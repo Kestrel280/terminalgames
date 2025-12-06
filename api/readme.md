@@ -3,8 +3,9 @@
 This application:
 - Manages a sqlite database of high-score leaderboards for certain terminal games
 - Runs a webserver which allows users to fetch data from the leaderboards, as well as post their scores to the leaderboards
+- Is intended to be run as a systemd daemon
 
-It is deployed at the `/leaderboards` endpoint of my [personal website](https://samdowney.dev). (Availability of the endpoint, and website itself, is not guaranteed! Especially while I'm working on things...)
+It is deployed at the `/leaderboards` endpoint of my [personal website](https://samdowney.dev).
 
 # API usage
 ## **Fetch** leaderboard information

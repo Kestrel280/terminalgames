@@ -102,7 +102,6 @@ enum MHD_Result sdServerConnectionCallback(void* cls, struct MHD_Connection* con
     }
 
     // not a new connection, all data received: process and construct response, all done
-    // TODO invoke callback
     sRP(ci, connection);
     return MHD_YES;
 }

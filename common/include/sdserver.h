@@ -32,6 +32,7 @@ struct _connectionInfo {
     ConnectionType connectionType;
 };
 
+// User-provided function to process a fully-received request
 typedef void (*serverRequestProcessor)(ConnectionInfo* ci, struct MHD_Connection* conn);
 
 // Start and stop a server
