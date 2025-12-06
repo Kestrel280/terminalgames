@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "server.h"
 
+#define PORT 10279
 #define NAME_MAX_LENGTH 12
 
 extern const char* leaderboardEndpoint;
@@ -17,6 +18,10 @@ enum {
 };
 
 extern const char* GAMES[];
+
+// callback passed to sdServer: upon receiving a full request, pass it to this function
+// this function will dispatch it to leaderboard-specific functionality
+void processRequest(ConnectionInfo* ci, struct MHD_Connection* connection);
 
 // get from leaderboard.
 // 'request' is a json-formatted string specifying which game to fetch, and TODO filters for user, # of scores to report, etc

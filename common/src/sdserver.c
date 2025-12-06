@@ -1,10 +1,21 @@
 #include <microhttpd.h>
 #include <string.h>
 #include <stdlib.h>
-#include "server.h"
-#include "leaderboard.h"
+#include "sdserver.h"
 
-extern const char* urlEndpoint;
+struct MHD_Daemon* sdServerStart(serverRequestProcessor reqProc, int port) {
+    struct MHD_Daemon* daemon;
+    daemon = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, port, NULL, NULL,
+                              &sdServerConnectionCallback, reqProc,
+                              MHD_OPTION_NOTIFY_COMPLETED, sdServerCompleteRequest, NULL,
+                              MHD_OPTION_END);
+    return daemon;
+}
+
+int sdServerShutdown(struct MHD_Daemon* daemon) {
+    MHD_stop_daemon(daemon);
+    return 0;
+}
 
 enum MHD_Result processIncrementalData(void* _ci, const char* data, size_t size) {
     ConnectionInfo* ci = (ConnectionInfo*) _ci;
@@ -29,50 +40,13 @@ void completeRequest(void* cls, struct MHD_Connection* connection, void** req_cl
     free(ci);
 }
 
-void processRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
-    ci->buf[ci->idx] = '\x00';
-    LOG("responding to request <%s>\n", ci->buf);
-
-    char* rtext;
-    struct MHD_Response* r;
-    if (ci->resourceChainSize == 0) { QUEUE_ERROR_RESPONSE("no API endpoint here"); return; }
-
-    if (strcmp(ci->resourceChain[0], leaderboardEndpoint) == 0) {
-        switch (ci->connectionType) {
-            case CONNECTION_TYPE_GET: {
-                bool success = leaderboardGet(ci, &rtext);
-                r = MHD_create_response_from_buffer_with_free_callback(strlen(rtext), rtext, &free);
-                MHD_add_response_header(r, "content-type", success ? "application/json" : "text/plain");
-                break;
-            }
-            case CONNECTION_TYPE_POST: {
-                rtext = leaderboardPost(ci) ? "successfully posted to leaderboard" : "failed to post to leaderboard: check API spec";
-                r = MHD_create_response_from_buffer(strlen(rtext), rtext, MHD_RESPMEM_PERSISTENT);
-                MHD_add_response_header(r, "content-type", "text/plain");
-                break;
-            }
-            default: QUEUE_ERROR_RESPONSE("http method not supported"); return;
-        }
-    } else {
-        QUEUE_ERROR_RESPONSE("no API endpoint here"); return;
-    }
-    LOG("\t responding with <%s>\n", rtext);
-    MHD_queue_response(connection, MHD_HTTP_OK, r);
-    MHD_destroy_response(r);
-}
-
 enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
                         const char* url, const char* method,
                         const char* version, const char* upload_data,
                         size_t* upload_data_size, void** req_cls) {
-    //LOG("%s '%s' request for '%s' using version '%s'\n", *req_cls ? "Followup" : "New", method, url, version);
 
-    // check that they're accessing /leaderboards...; if not, respond with error
-    /*if (strncmp(url, urlEndpoint, strlen(urlEndpoint)) != 0) {
-        QUEUE_ERROR_RESPONSE("improper attempt to access leaderboards API");
-        return MHD_YES;
-    }
-    */
+    // unpack the server request processor function pointer
+    serverRequestProcessor sRP = cls;
 
     // is this a new connection? if so, create a ConnectionInfo for it; which will be freed by completeRequest()
     if (*req_cls == NULL) {
@@ -109,11 +83,6 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
 
         // -- subresource collection clean up
         free(urlCpy);
-        /*
-        LOG("numResources = %d: ", numResources);
-        for (int i = 0; i < ci->resourceChainSize; i++) LOG("%s . ", ci->resourceChain[i]);
-        LOG("\n");
-        */
 
         if (strcmp(method, "GET") == 0) ci->connectionType = CONNECTION_TYPE_GET;
         else if (strcmp(method, "POST") == 0) ci->connectionType = CONNECTION_TYPE_POST;
@@ -132,6 +101,7 @@ enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
     }
 
     // not a new connection, all data received: process and construct response, all done
-    processRequest(ci, connection);
+    // TODO invoke callback
+    sRP(ci, connection);
     return MHD_YES;
 }

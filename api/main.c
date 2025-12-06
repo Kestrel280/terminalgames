@@ -1,3 +1,4 @@
+#include <systemd/sd-daemon.h>
 #include <microhttpd.h>
 #include <stdio.h>
 #include <sqlite3.h>
@@ -9,24 +10,29 @@
 const char* urlEndpoint = "/leaderboards";
 sqlite3* db;
 
-int main(int argc, char* argv[]) {
-    struct MHD_Daemon* daemon;
-    daemon = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, PORT, NULL, NULL,
-                              &connectionCallback, NULL, // specify connection callback, and pass no args
-                              MHD_OPTION_NOTIFY_COMPLETED, completeRequest, NULL,
-                              MHD_OPTION_END);
+void handleServerPanic(void* cls, const char* file, unsigned int line, const char* reason) {
+    stopServer();
+    return;
+}
 
-    if (daemon == NULL) return 1;
+int main(int argc, char* argv[]) {
 
     sqlite3_open("leaderboards.db", &db);
     if (db == NULL) {
         LOG("failure opening database\n");
-        MHD_stop_daemon(daemon);
         return -1;
     }
 
+    MHD_set_panic_func(handleServerPanic, NULL);
+    struct MHD_Daemon* daemon;
+    sdStartServer(processRequest, PORT);
+    sd_notify(0, "READY=1");
+
+    if (daemon == NULL) return 1;
+
     getchar(); // block; server (listen + response callback) is running in its own thread, so just keep the process alive
 
+    sd_notify(0, "STOPPING=1");
     sqlite3_close(db);
     MHD_stop_daemon(daemon);
     return 0;
