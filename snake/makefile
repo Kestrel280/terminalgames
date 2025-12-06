@@ -20,7 +20,7 @@ DEPSFILE = .deps
 SRCS = main.c snake.c menu.c
 
 snake: $(SRCS:%.c=$(BUILDDIR)/%.o) # depends on .o files corresponding to all SRCS
-	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o snake -lncurses -lcurl -ljson-c -L../common/lib -lleaderboard -lbitpack
+	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o snake -L../common/lib -lleaderboard -lbitpack -lncurses -lcurl -ljson-c 
 
 # generate dependency rules using gcc -MM: code.o depends on code.c and any non-system #includes in code.c
 $(DEPSFILE): $(SRCDIR)/*.c
