@@ -32,7 +32,7 @@ enum MHD_Result processIncrementalData(void* _ci, const char* data, size_t size)
     return MHD_YES;
 }
 
-void completeRequest(void* cls, struct MHD_Connection* connection, void** req_cls, enum MHD_RequestTerminationCode toe) {
+void sdServerCompleteRequest(void* cls, struct MHD_Connection* connection, void** req_cls, enum MHD_RequestTerminationCode toe) {
     //LOG("completeRequest callback invoked\n");
     ConnectionInfo* ci = (ConnectionInfo*) *req_cls;
     for (int i = 0; i < ci->resourceChainSize; i++) free(ci->resourceChain[i]);
@@ -40,7 +40,7 @@ void completeRequest(void* cls, struct MHD_Connection* connection, void** req_cl
     free(ci);
 }
 
-enum MHD_Result connectionCallback(void* cls, struct MHD_Connection* connection,
+enum MHD_Result sdServerConnectionCallback(void* cls, struct MHD_Connection* connection,
                         const char* url, const char* method,
                         const char* version, const char* upload_data,
                         size_t* upload_data_size, void** req_cls) {

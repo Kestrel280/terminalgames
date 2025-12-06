@@ -3,7 +3,7 @@
 #include <sqlite3.h>
 #include <json-c/json_object.h>
 #include <json-c/json_tokener.h>
-#include "leaderboard.h"
+#include "leaderboardapi.h"
 #include "utils.h"
 
 #define EXPAND_AND_LOG_SQL_STATEMENT(stmt) do { char* __expStr__ = sqlite3_expanded_sql(stmt); LOG("\t expanded SQL statement: '%s'\n", __expStr__); sqlite3_free(__expStr__); } while(0)
@@ -61,6 +61,7 @@ bool leaderboardGet(ConnectionInfo* ci, char** pOut) {
         _getStmt[reqlen - 2] = ';';
         _getStmt[reqlen - 1] = '\x00';
         
+        LOG("_getStmt: '%s'\n", _getStmt);
         if (sqlite3_prepare_v2(db, _getStmt, -1, &getStmt, NULL) != SQLITE_OK) {
             LOG("error compiling SQL get-player statement\n");
             *pOut = errOut;
@@ -203,6 +204,7 @@ bool leaderboardPost(ConnectionInfo* ci) {
     // construct SQL insert-into statement
     char _insertStmt[strlen(_templateInsertStmt) + (2 * strlen(game))];
     sprintf(_insertStmt, _templateInsertStmt, game, game);
+    LOG("_insertStmt: '%s'\n", _insertStmt);
     sqlite3_stmt* insertStmt;
     if (sqlite3_prepare_v2(db, _insertStmt, -1, &insertStmt, NULL) != SQLITE_OK) { // compile statement
         LOG("error compiling SQL insert-into statement\n");
@@ -223,7 +225,7 @@ bool leaderboardPost(ConnectionInfo* ci) {
     return true;
 }
 
-void processRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
+void leaderboardProcessRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
     ci->buf[ci->idx] = '\x00';
     LOG("responding to request <%s>\n", ci->buf);
 

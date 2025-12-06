@@ -5,13 +5,13 @@
 #include <json-c/json_object.h>
 #include <json-c/json_tokener.h>
 #include "utils.h"
-#include "server.h"
+#include "leaderboardapi.h"
+#include "sdserver.h"
 
 const char* urlEndpoint = "/leaderboards";
 sqlite3* db;
 
 void handleServerPanic(void* cls, const char* file, unsigned int line, const char* reason) {
-    stopServer();
     return;
 }
 
@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
 
     MHD_set_panic_func(handleServerPanic, NULL);
     struct MHD_Daemon* daemon;
-    sdStartServer(processRequest, PORT);
+    daemon = sdServerStart(leaderboardProcessRequest, PORT);
     sd_notify(0, "READY=1");
 
     if (daemon == NULL) return 1;
@@ -34,6 +34,6 @@ int main(int argc, char* argv[]) {
 
     sd_notify(0, "STOPPING=1");
     sqlite3_close(db);
-    MHD_stop_daemon(daemon);
+    sdServerShutdown(daemon);
     return 0;
 }

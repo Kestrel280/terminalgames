@@ -36,7 +36,7 @@ typedef void (*serverRequestProcessor)(ConnectionInfo* ci, struct MHD_Connection
 
 // Start and stop a server
 struct MHD_Daemon* sdServerStart(serverRequestProcessor reqProc, int port);
-int sdServerStop(struct MHD_Daemon* daemon);
+int sdServerShutdown(struct MHD_Daemon* daemon);
 
 // main connection callback
 // invoked at several points:
