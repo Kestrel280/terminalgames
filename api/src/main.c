@@ -1,39 +1,49 @@
 #include <systemd/sd-daemon.h>
 #include <microhttpd.h>
-#include <stdio.h>
 #include <sqlite3.h>
-#include <json-c/json_object.h>
-#include <json-c/json_tokener.h>
+#include <pthread.h>
+#include <string.h>
+#include <signal.h>
+#include <stdlib.h>
 #include "utils.h"
 #include "leaderboardapi.h"
 #include "sdserver.h"
 
-const char* urlEndpoint = "/leaderboards";
-sqlite3* db;
+sqlite3* db = NULL;
+struct MHD_Daemon* sdDaemon = NULL;
 
+void handleShutdown() {
+    const char* errmsg = "Leaderboard API shutdown\n";
+    write(2, errmsg, strlen(errmsg));
+    sqlite3_close(db); // nop if null
+    //if (sdDaemon) sdServerShutdown(&sdDaemon);
+    sd_notify(0, "STOPPING=1");
+    exit(1);
+    return;
+}
 void handleServerPanic(void* cls, const char* file, unsigned int line, const char* reason) {
+    LOG("Leaderboard API encountered server panic:\n");
+    LOG("\t\tfile = %s\n\t\tline = %u\n\t\treason = '%s'\n", file, line, reason);
+    handleShutdown();
     return;
 }
 
 int main(int argc, char* argv[]) {
+    // install signal handlers
+    signal(SIGTERM, handleShutdown);
 
+    // open leaderboard database
     sqlite3_open("leaderboards.db", &db);
-    if (db == NULL) {
-        LOG("failure opening database\n");
-        return -1;
-    }
+    if (db == NULL) { LOG("failure opening database\n"); return 1; }
 
+    // start running the actual server
     MHD_set_panic_func(handleServerPanic, NULL);
-    struct MHD_Daemon* daemon;
-    daemon = sdServerStart(leaderboardProcessRequest, PORT);
+    sdDaemon = sdServerStart(leaderboardProcessRequest, PORT);
+    if (sdDaemon == NULL) { LOG("failure starting sdServer\n"); return 1; }
+
+    // inform systemd that we're good to go
     sd_notify(0, "READY=1");
 
-    if (daemon == NULL) return 1;
-
-    getchar(); // block; server (listen + response callback) is running in its own thread, so just keep the process alive
-
-    sd_notify(0, "STOPPING=1");
-    sqlite3_close(db);
-    sdServerShutdown(daemon);
-    return 0;
+    // server is running on its own thread, and we've installed signal handlers for 
+    pthread_exit(NULL);
 }

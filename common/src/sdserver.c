@@ -12,8 +12,9 @@ struct MHD_Daemon* sdServerStart(serverRequestProcessor reqProc, int port) {
     return daemon;
 }
 
-int sdServerShutdown(struct MHD_Daemon* daemon) {
-    MHD_stop_daemon(daemon);
+int sdServerShutdown(struct MHD_Daemon** daemon) {
+    MHD_stop_daemon(*daemon);
+    *daemon = NULL;
     return 0;
 }
 
