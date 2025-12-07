@@ -54,10 +54,10 @@ int gamePlay() {
     game.snake.data = (int*)malloc(sizeof(int) * game.width * game.height);
     game.snake.size = 5;
     game.snake.capacity = game.width * game.height;
-    game.snake.head = 4;
+    game.snake.head = game.snake.size - 1;
     game.snake.tail = 0;
-    game.snake.data[4] = gridToIdx(game.height / 2, game.width / 2, game.width);
-    for (int i = 3; i >= 0; i--) game.snake.data[i] = game.snake.data[i + 1] - game.width;
+    game.snake.data[game.snake.head] = gridToIdx(game.height / 2, game.width / 2, game.width);
+    for (int i = game.snake.head - 1; i >= 0; i--) game.snake.data[i] = game.snake.data[i + 1] - game.width;
     game.snake.bp.bitsCapacity = game.snake.capacity; // initialize snake pitback
     game.snake.bp._numEls = (game.snake.capacity + (sizeof(bitpack_el) - 1)) / sizeof(bitpack_el); // # of game cells divided by sizeof(bitpack_el), rounded up
     game.snake.bp._data = (bitpack_el*)malloc(sizeof(bitpack_el) * game.snake.bp._numEls); // allocate bitpack data
@@ -229,10 +229,9 @@ void gameCreatePickup(Game* game) {
 void gameOver(Game* game, uint64_t dtUs) {
     game->timeToNextDecayUs -= (int64_t)dtUs;
     if (game->timeToNextDecayUs < 0) {
-        if (game->snake.size <= 1) game->state = GAME_STATE_FINISHED;
+        if (game->snake.size <= 1) { game->state = GAME_STATE_FINISHED; return; }
         game->timeToNextDecayUs += game->baseTimeToDecayUs;
         game->baseTimeToDecayUs = game->baseTimeToDecayUs - (game->baseTimeToDecayUs / 10);
-        int item = snakePop(&game->snake);
         game->needsDraw = true;
     }
 }

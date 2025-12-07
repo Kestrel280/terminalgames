@@ -3,7 +3,7 @@ SRCDIR=src
 INCLUDEDIR=include
 LIBINCLUDEDIR=../common/include
 CC=gcc
-CFLAGS=
+CFLAGS=-Wall
 ifeq ($(OS), Windows_NT)
 	CC = x86_64-w64-mingw32-gcc.exe
 	CYGWIN_INCLUDE="C:/cygwin64/usr/include"
@@ -20,7 +20,7 @@ DEPSFILE = .deps
 SRCS = main.c snake.c menu.c
 
 snake: $(SRCS:%.c=$(BUILDDIR)/%.o) # depends on .o files corresponding to all SRCS
-	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o snake -lncurses -lcurl -ljson-c -L../common/lib -lleaderboard -lbitpack
+	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o snake -L../common/lib -lleaderboard -lbitpack -lncurses -lcurl -ljson-c
 
 # generate dependency rules using gcc -MM: code.o depends on code.c and any non-system #includes in code.c
 $(DEPSFILE): $(SRCDIR)/*.c
