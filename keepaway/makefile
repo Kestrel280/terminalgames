@@ -14,7 +14,7 @@ endif
 SRCS=main.c mainmenu.c keepaway.c
 
 keepaway: $(SRCS:%.c=$(BUILDDIR)/%.o)
-	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o $@ -lncurses -lcurl -ljson-c -L$(LIBDIR) -lleaderboard
+	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o $@ -L$(LIBDIR) -lleaderboard -lncurses -lcurl -ljson-c
 
 debug: $(SRCS:%.c=$(BUILDDIR)/%.odbg)
 	$(CC) $(CFLAGS) $(BUILDDIR)/*.odbg -o $@ -lncurses $(CFLAGS)

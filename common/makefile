@@ -6,8 +6,8 @@ LIBDIR=lib
 INCLUDEDIR=include
 DEPSFILE=.deps
 
-SRCS=leaderboard.c bitpack.c
-LIBS=leaderboard.a bitpack.a
+SRCS=leaderboard.c bitpack.c sdserver.c
+LIBS=leaderboard.a bitpack.a sdserver.a
 
 
 all: $(LIBS:%.a=$(LIBDIR)/lib%.a)

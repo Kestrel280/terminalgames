@@ -1,17 +1,24 @@
-CFLAGS = -Wall
-DEPSFILE = .deps
-SRCS = main.c server.c leaderboard.c
+CC=gcc
+BUILDDIR=build
+SRCDIR=src
+INCLUDEDIR=include
+LIBINCLUDEDIR=../common/include
+LIBDIR=../common/lib
+CFLAGS=-Wall
+DEPSFILE=.deps
+SRCS=main.c leaderboardapi.c
+TARGETNAME=leaderboardapi
 
-all: $(SRCS:%.c=%.o)
-	gcc *.o -o api -L/usr/local/lib/ -lmicrohttpd -lsqlite3 -ljson-c $(CFLAGS)
+$(TARGETNAME): $(SRCS:%.c=$(BUILDDIR)/%.o)
+	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o $(TARGETNAME) -L$(LIBDIR) -lsdserver -lmicrohttpd -lsqlite3 -ljson-c -lsystemd
 
-$(DEPSFILE): $(SRCS)
+$(DEPSFILE): $(SRCDIR)/*.c
 	rm -f $(DEPSFILE)
-	gcc -MM $^ $(CFLAGS) > $(DEPSFILE)
+	gcc -MM $^ $(CFLAGS) -I$(INCLUDEDIR) -I$(LIBINCLUDEDIR) > $(DEPSFILE)
 include $(DEPSFILE)
 
-%.o: %.c
-	gcc -c $< -o $@ $(CFLAGS)
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c
+	gcc $(CFLAGS) -I$(INCLUDEDIR) -I$(LIBINCLUDEDIR) -c $< -o $@
 
 clean:
-	rm -f $(DEPSFILE) *.o api
+	rm -f $(DEPSFILE) $(BUILDDIR)/*.o $(TARGETNAME)

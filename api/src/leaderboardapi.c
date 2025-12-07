@@ -3,13 +3,13 @@
 #include <sqlite3.h>
 #include <json-c/json_object.h>
 #include <json-c/json_tokener.h>
-#include "leaderboard.h"
+#include "leaderboardapi.h"
 #include "utils.h"
 
 #define EXPAND_AND_LOG_SQL_STATEMENT(stmt) do { char* __expStr__ = sqlite3_expanded_sql(stmt); LOG("\t expanded SQL statement: '%s'\n", __expStr__); sqlite3_free(__expStr__); } while(0)
 
 // games which can be queried
-const char* GAMES[] = { "snake" , "keepaway" , "anotherfakegame" };
+const char* GAMES[] = { "snake" , "keepaway" };
 const char* leaderboardEndpoint = "leaderboards";
 
 static inline bool SAME_STRING(const char* s1, const char* s2) { return (strcmp(s1, s2) == 0); }
@@ -61,6 +61,7 @@ bool leaderboardGet(ConnectionInfo* ci, char** pOut) {
         _getStmt[reqlen - 2] = ';';
         _getStmt[reqlen - 1] = '\x00';
         
+        LOG("_getStmt: '%s'\n", _getStmt);
         if (sqlite3_prepare_v2(db, _getStmt, -1, &getStmt, NULL) != SQLITE_OK) {
             LOG("error compiling SQL get-player statement\n");
             *pOut = errOut;
@@ -203,6 +204,7 @@ bool leaderboardPost(ConnectionInfo* ci) {
     // construct SQL insert-into statement
     char _insertStmt[strlen(_templateInsertStmt) + (2 * strlen(game))];
     sprintf(_insertStmt, _templateInsertStmt, game, game);
+    LOG("_insertStmt: '%s'\n", _insertStmt);
     sqlite3_stmt* insertStmt;
     if (sqlite3_prepare_v2(db, _insertStmt, -1, &insertStmt, NULL) != SQLITE_OK) { // compile statement
         LOG("error compiling SQL insert-into statement\n");
@@ -221,4 +223,36 @@ bool leaderboardPost(ConnectionInfo* ci) {
     sqlite3_finalize(insertStmt);
     json_object_put(jobj);
     return true;
+}
+
+void leaderboardProcessRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
+    ci->buf[ci->idx] = '\x00';
+    LOG("responding to request <%s>\n", ci->buf);
+
+    char* rtext;
+    struct MHD_Response* r;
+    if (ci->resourceChainSize == 0) { QUEUE_ERROR_RESPONSE("no API endpoint here"); return; }
+
+    if (strcmp(ci->resourceChain[0], leaderboardEndpoint) == 0) {
+        switch (ci->connectionType) {
+            case CONNECTION_TYPE_GET: {
+                bool success = leaderboardGet(ci, &rtext);
+                r = MHD_create_response_from_buffer_with_free_callback(strlen(rtext), rtext, &free);
+                MHD_add_response_header(r, "content-type", success ? "application/json" : "text/plain");
+                break;
+            }
+            case CONNECTION_TYPE_POST: {
+                rtext = leaderboardPost(ci) ? "successfully posted to leaderboard" : "failed to post to leaderboard: check API spec";
+                r = MHD_create_response_from_buffer(strlen(rtext), rtext, MHD_RESPMEM_PERSISTENT);
+                MHD_add_response_header(r, "content-type", "text/plain");
+                break;
+            }
+            default: QUEUE_ERROR_RESPONSE("http method not supported"); return;
+        }
+    } else {
+        QUEUE_ERROR_RESPONSE("no API endpoint here"); return;
+    }
+    LOG("\t responding with <%s>\n", rtext);
+    MHD_queue_response(connection, MHD_HTTP_OK, r);
+    MHD_destroy_response(r);
 }
