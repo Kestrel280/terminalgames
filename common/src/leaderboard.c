@@ -129,6 +129,7 @@ void leaderboardSubmitScore(const char* gameName, uint64_t score) {
     getmaxyx(stdscr, height, width);
 
     char enterNamePrompt[100];
+    char scoreStr[100];
     sprintf(enterNamePrompt, "ENTER NAME (MAX %d):", NAME_MAX_LENGTH);
 
     char playerName[NAME_MAX_LENGTH + 1];
@@ -138,8 +139,8 @@ void leaderboardSubmitScore(const char* gameName, uint64_t score) {
     curs_set(1);
     do {
         erase();
-        sprintf(playerName, "SCORE: %llu", score);
-        mvprintw(2, (width - strlen(playerName)) / 2, "%s", playerName);
+        sprintf(scoreStr, "SCORE: %llu", score);
+        mvprintw(2, (width - strlen(scoreStr)) / 2, "%s", scoreStr);
         mvprintw(4, (width - strlen(enterNamePrompt)) / 2, "%s", enterNamePrompt);
         mvaddch(5, (width - NAME_MAX_LENGTH) / 2 - 1, '<');
         mvaddch(5, (width + NAME_MAX_LENGTH) / 2, '>');
