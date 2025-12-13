@@ -230,6 +230,7 @@ void gameOver(Game* game, uint64_t dtUs) {
     game->timeToNextDecayUs -= (int64_t)dtUs;
     if (game->timeToNextDecayUs < 0) {
         if (game->snake.size <= 1) { game->state = GAME_STATE_FINISHED; return; }
+        snakePop(&game->snake);
         game->timeToNextDecayUs += game->baseTimeToDecayUs;
         game->baseTimeToDecayUs = game->baseTimeToDecayUs - (game->baseTimeToDecayUs / 10);
         game->needsDraw = true;
