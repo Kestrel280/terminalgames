@@ -5,7 +5,6 @@
 
 #define LOG(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
 #define MAX_POST_BODY_SIZE 1023
-#define PORT 10279
 #define QUEUE_ERROR_RESPONSE(ERRMSG) do { struct MHD_Response* __response = MHD_create_response_from_buffer(strlen(ERRMSG), (void*)ERRMSG, MHD_RESPMEM_PERSISTENT);\
                                 MHD_queue_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, __response);\
                                 MHD_destroy_response(__response);\

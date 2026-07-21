@@ -1,0 +1,13 @@
+[Unit]
+Description=API server for samdowney.dev
+After=network.target
+
+[Service]
+ExecStart=/home/sam/terminalgames/api/leaderboardapi
+Restart=always
+User=sam
+Group=sam
+WorkingDirectory=/home/sam/terminalgames/api
+
+[Install]
+WantedBy=multi-user.target
