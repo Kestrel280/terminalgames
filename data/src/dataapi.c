@@ -19,7 +19,6 @@ void dataProcessRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
 
     char* rtext;
     struct MHD_Response* r;
-    if (ci->resourceChainSize == 0) { QUEUE_ERROR_RESPONSE("no API endpoint here"); return; }
 
     if (strcmp(ci->resourceChain[0], wellnessEndpoint) == 0) {
         switch (ci->connectionType) {

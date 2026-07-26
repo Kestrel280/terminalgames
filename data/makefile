@@ -10,7 +10,7 @@ SRCS=main.c dataapi.c wellness.c
 TARGETNAME=dataapi
 
 $(TARGETNAME): $(SRCS:%.c=$(BUILDDIR)/%.o)
-	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o $(TARGETNAME) -L$(LIBDIR) -lsdserver -lmicrohttpd -lsqlite3 -ljson-c -lsystemd
+	$(CC) $(CFLAGS) $(BUILDDIR)/*.o -o $(TARGETNAME) -L$(LIBDIR) -lsdserver -lmicrohttpd -lsqlite3 -ljson-c -lsystemd -luriparser
 
 $(DEPSFILE): $(SRCDIR)/*.c
 	rm -f $(DEPSFILE)
