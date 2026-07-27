@@ -54,6 +54,7 @@ enum MHD_Result sdServerConnectionCallback(void* cls, struct MHD_Connection* con
         ConnectionInfo* ci = (ConnectionInfo*)malloc(sizeof(ConnectionInfo));
         if (ci == NULL) { LOG("major error: failed to allocate memory for ConnectionInfo\n"); exit(1); }
         ci->idx = 0;
+        ci->mhd_connection = connection;
 
         // -- extract subresources: e.g. "/leaderboards/game/snake" -> ["leaderboards", "game", "snake"] TODO clean this up
         // first, create writable copy of url
@@ -102,6 +103,6 @@ enum MHD_Result sdServerConnectionCallback(void* cls, struct MHD_Connection* con
     }
 
     // not a new connection, all data received: process and construct response, all done
-    sRP(ci, connection);
+    sRP(ci);
     return MHD_YES;
 }

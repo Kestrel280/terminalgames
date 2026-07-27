@@ -225,7 +225,7 @@ bool leaderboardPost(ConnectionInfo* ci) {
     return true;
 }
 
-void leaderboardProcessRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
+void leaderboardProcessRequest(ConnectionInfo* ci) {
     ci->buf[ci->idx] = '\x00';
     LOG("responding to request <%s>\n", ci->buf);
 
@@ -253,6 +253,6 @@ void leaderboardProcessRequest(ConnectionInfo* ci, struct MHD_Connection* connec
         QUEUE_ERROR_RESPONSE("no API endpoint here"); return;
     }
     LOG("\t responding with <%s>\n", rtext);
-    MHD_queue_response(connection, MHD_HTTP_OK, r);
+    MHD_queue_response(ci->mhd_connection, MHD_HTTP_OK, r);
     MHD_destroy_response(r);
 }

@@ -13,7 +13,7 @@
 static inline bool SAME_STRING(const char* s1, const char* s2) { return (strcmp(s1, s2) == 0); }
 extern sqlite3* db;
 
-void dataProcessRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
+void dataProcessRequest(ConnectionInfo* ci) {
     ci->buf[ci->idx] = '\x00';
     LOG("responding to request <%s>\n", ci->buf);
 
@@ -41,6 +41,6 @@ void dataProcessRequest(ConnectionInfo* ci, struct MHD_Connection* connection) {
         return;
     }
     LOG("\t responding with <%s>\n", rtext);
-    MHD_queue_response(connection, MHD_HTTP_OK, r);
+    MHD_queue_response(ci->mhd_connection, MHD_HTTP_OK, r);
     MHD_destroy_response(r);
 }

@@ -1,4 +1,5 @@
 #include <string.h>
+#include <microhttpd.h>
 #include <stdlib.h>
 #include <sqlite3.h>
 #include <uriparser/Uri.h>

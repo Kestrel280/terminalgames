@@ -9,6 +9,6 @@ extern const char* wellnessEndpoint;
 
 // callback passed to sdServer: upon receiving a full request, pass it to this function
 // this function will dispatch it to leaderboard-specific functionality
-void dataProcessRequest(ConnectionInfo* ci, struct MHD_Connection* connection);
+void dataProcessRequest(ConnectionInfo* ci);
 
 #endif

@@ -6,7 +6,7 @@
 #define LOG(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
 #define MAX_POST_BODY_SIZE 1023
 #define QUEUE_ERROR_RESPONSE(ERRMSG) do { struct MHD_Response* __response = MHD_create_response_from_buffer(strlen(ERRMSG), (void*)ERRMSG, MHD_RESPMEM_PERSISTENT);\
-                                MHD_queue_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, __response);\
+                                MHD_queue_response(ci->mhd_connection, MHD_HTTP_INTERNAL_SERVER_ERROR, __response);\
                                 MHD_destroy_response(__response);\
                                 LOG(ERRMSG); } while(0)
 
@@ -29,10 +29,11 @@ struct _connectionInfo {
     int idx;
     char buf[MAX_POST_BODY_SIZE + 1];
     ConnectionType connectionType;
+    struct MHD_Connection* mhd_connection;
 };
 
 // User-provided function to process a fully-received request
-typedef void (*serverRequestProcessor)(ConnectionInfo* ci, struct MHD_Connection* conn);
+typedef void (*serverRequestProcessor)(ConnectionInfo* ci);
 
 // Start and stop a server
 struct MHD_Daemon* sdServerStart(serverRequestProcessor reqProc, int port);
