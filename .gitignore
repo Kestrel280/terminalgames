@@ -11,3 +11,6 @@
 *.odbg
 *.deps
 *.exe
+
+# others
+*.swp

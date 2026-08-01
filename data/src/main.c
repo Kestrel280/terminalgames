@@ -32,9 +32,9 @@ int main(int argc, char* argv[]) {
     // install signal handlers
     signal(SIGTERM, handleShutdown);
 
-    // open leaderboard database
+    // open database
     sqlite3_open("data.db", &db);
-    if (db == NULL) { LOG("failure opening database\n"); return 1; }
+    if (db == NULL) { LOG("failure opening wellness database\n"); return 1; }
 
     // start running the actual server
     MHD_set_panic_func(handleServerPanic, NULL);
