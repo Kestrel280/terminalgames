@@ -2,6 +2,7 @@
 #include <microhttpd.h>
 #include <stdlib.h>
 #include <sqlite3.h>
+#include <time.h>
 #include <uriparser/Uri.h>
 #include "dataapi.h"
 #include "wellness.h"
@@ -75,11 +76,13 @@ bool wellnessPost(ConnectionInfo* ci) {
 
     // For each kv in query string, insert into wellness db
     currentKv = queryList;
-    const char* date = "date placeholder";
+    char isodate[255];
+    time_t _time = time(NULL);
+    strftime(isodate, sizeof(isodate), "%FT%TZ", gmtime(&_time));
     while (currentKv) {
         if (strlen(currentKv->value) == 0) { currentKv = currentKv->next; continue; }
         sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@user"), user, strlen(user), SQLITE_STATIC);
-        sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@date"), date, strlen(date), SQLITE_STATIC);
+        sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@date"), isodate, strlen(isodate), SQLITE_STATIC);
         sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@measure_name"), currentKv->key, strlen(currentKv->key), SQLITE_STATIC);
         sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@measure_value"), currentKv->value, strlen(currentKv->value), SQLITE_STATIC);
         EXPAND_AND_LOG_SQL_STATEMENT(insertStmt);
