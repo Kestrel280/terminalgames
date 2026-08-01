@@ -28,17 +28,18 @@ bool wellnessGet(ConnectionInfo* ci, char** pOut) {
 bool wellnessPost(ConnectionInfo* ci) {
     const char* user = MHD_lookup_connection_value(ci->mhd_connection, MHD_HEADER_KIND, "username");
     const char* pwd = MHD_lookup_connection_value(ci->mhd_connection, MHD_HEADER_KIND, "password");
+    const char* date = MHD_lookup_connection_value(ci->mhd_connection, MHD_HEADER_KIND, "entrydate");
 
     char* req = ci->buf;
     char* afterLast = req;
     while (*afterLast) afterLast++;
 
-    // Verify user/password were provided
-    if (!pwd || !user) {
-        LOG("no user and/or password provided in header, rejecting\n");
+    // Verify user/password/date were provided
+    if (!pwd || !user || !date) {
+        LOG("no user and/or password and/or date provided in header, rejecting\n");
         return false;
     }
-    LOG("user: %s | password hash: %s\n", user, pwd);
+    LOG("user: %s | password hash: %s | date: %s\n", user, pwd, date);
 
     // Prepare SQL statement to fetch stored password for user
     sqlite3_stmt* getUserPwdStmt;
@@ -76,13 +77,10 @@ bool wellnessPost(ConnectionInfo* ci) {
 
     // For each kv in query string, insert into wellness db
     currentKv = queryList;
-    char isodate[255];
-    time_t _time = time(NULL);
-    strftime(isodate, sizeof(isodate), "%FT%TZ", gmtime(&_time));
     while (currentKv) {
         if (strlen(currentKv->value) == 0) { currentKv = currentKv->next; continue; }
         sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@user"), user, strlen(user), SQLITE_STATIC);
-        sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@date"), isodate, strlen(isodate), SQLITE_STATIC);
+        sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@date"), date, strlen(date), SQLITE_STATIC);
         sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@measure_name"), currentKv->key, strlen(currentKv->key), SQLITE_STATIC);
         sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@measure_value"), currentKv->value, strlen(currentKv->value), SQLITE_STATIC);
         EXPAND_AND_LOG_SQL_STATEMENT(insertStmt);
