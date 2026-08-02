@@ -75,12 +75,16 @@ bool wellnessPost(ConnectionInfo* ci) {
         return false;
     }
 
+    // Convert date to RFC3339 datetime
+    char datetime[64] = { 0 };
+    snprintf(datetime, 63, "%sT00:00:00Z", date);
+
     // For each kv in query string, insert into wellness db
     currentKv = queryList;
     while (currentKv) {
         if (strlen(currentKv->value) == 0) { currentKv = currentKv->next; continue; }
         sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@user"), user, strlen(user), SQLITE_STATIC);
-        sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@date"), date, strlen(date), SQLITE_STATIC);
+        sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@date"), datetime, strlen(datetime), SQLITE_STATIC);
         sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@measure_name"), currentKv->key, strlen(currentKv->key), SQLITE_STATIC);
         sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@measure_value"), currentKv->value, strlen(currentKv->value), SQLITE_STATIC);
         EXPAND_AND_LOG_SQL_STATEMENT(insertStmt);
