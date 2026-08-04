@@ -10,7 +10,7 @@
 #define EXPAND_AND_LOG_SQL_STATEMENT(stmt) do { char* __expStr__ = sqlite3_expanded_sql(stmt); LOG("\texpanded SQL Statement: '%s'\n", __expStr__); sqlite3_free(__expStr__); } while (0);
 static inline bool SAME_STRING(const char* s1, const char* s2) { return (strcmp(s1, s2) == 0); }
 
-extern sqlite3* db;
+extern sqlite3 *db, *dbUsers;
 const char* wellnessEndpoint = "data";
 const char* _insertStmt = "INSERT INTO wellness VALUES(@user, @date, @measure_name, @measure_value);";
 const char* _getUserPwdStmt = "SELECT password FROM users WHERE user=@user;";
@@ -39,16 +39,14 @@ bool wellnessPost(ConnectionInfo* ci) {
         LOG("no user and/or password and/or date provided in header, rejecting\n");
         return false;
     }
-    LOG("user: %s | password hash: %s | date: %s\n", user, pwd, date);
 
     // Prepare SQL statement to fetch stored password for user
     sqlite3_stmt* getUserPwdStmt;
-    if (sqlite3_prepare_v2(db, _getUserPwdStmt, -1, &getUserPwdStmt, NULL) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(dbUsers, _getUserPwdStmt, -1, &getUserPwdStmt, NULL) != SQLITE_OK) {
         LOG("error compiling SQL get-user-password statement\n");
         return false;
     }
     sqlite3_bind_text(getUserPwdStmt, sqlite3_bind_parameter_index(getUserPwdStmt, "@user"), user, strlen(user), SQLITE_STATIC);
-    EXPAND_AND_LOG_SQL_STATEMENT(getUserPwdStmt);
 
     // Execute SQL query for user password and check for match
     if (sqlite3_step(getUserPwdStmt) != SQLITE_ROW) {
@@ -87,7 +85,6 @@ bool wellnessPost(ConnectionInfo* ci) {
         sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@date"), datetime, strlen(datetime), SQLITE_STATIC);
         sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@measure_name"), currentKv->key, strlen(currentKv->key), SQLITE_STATIC);
         sqlite3_bind_text(insertStmt, sqlite3_bind_parameter_index(insertStmt, "@measure_value"), currentKv->value, strlen(currentKv->value), SQLITE_STATIC);
-        EXPAND_AND_LOG_SQL_STATEMENT(insertStmt);
         sqlite3_step(insertStmt);
         sqlite3_reset(insertStmt);
         currentKv = currentKv->next;

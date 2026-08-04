@@ -10,6 +10,7 @@
 #include "sdserver.h"
 
 sqlite3* db = NULL;
+sqlite3* dbUsers = NULL;
 struct MHD_Daemon* sdDaemon = NULL;
 
 void handleShutdown() {
@@ -34,7 +35,8 @@ int main(int argc, char* argv[]) {
 
     // open database
     sqlite3_open("data.db", &db);
-    if (db == NULL) { LOG("failure opening wellness database\n"); return 1; }
+    sqlite3_open("users.db", &dbUsers);
+    if (db == NULL || dbUsers == NULL) { LOG("failure opening wellness or users database\n"); return 1; }
 
     // start running the actual server
     MHD_set_panic_func(handleServerPanic, NULL);
