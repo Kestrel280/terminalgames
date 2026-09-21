@@ -5,8 +5,8 @@ After=network.target
 [Service]
 ExecStart=/home/sam/terminalgames/data/dataapi
 Restart=always
-User=sam
-Group=sam
+User=root
+Group=root
 WorkingDirectory=/home/sam/terminalgames/data
 
 [Install]

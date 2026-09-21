@@ -29,6 +29,7 @@ bool wellnessPost(ConnectionInfo* ci) {
     const char* user = MHD_lookup_connection_value(ci->mhd_connection, MHD_HEADER_KIND, "username");
     const char* pwd = MHD_lookup_connection_value(ci->mhd_connection, MHD_HEADER_KIND, "password");
     const char* date = MHD_lookup_connection_value(ci->mhd_connection, MHD_HEADER_KIND, "entrydate");
+    int _err;
 
     char* req = ci->buf;
     char* afterLast = req;
@@ -42,8 +43,8 @@ bool wellnessPost(ConnectionInfo* ci) {
 
     // Prepare SQL statement to fetch stored password for user
     sqlite3_stmt* getUserPwdStmt;
-    if (sqlite3_prepare_v2(dbUsers, _getUserPwdStmt, -1, &getUserPwdStmt, NULL) != SQLITE_OK) {
-        LOG("error compiling SQL get-user-password statement\n");
+    if ((_err = sqlite3_prepare_v2(dbUsers, _getUserPwdStmt, -1, &getUserPwdStmt, NULL)) != SQLITE_OK) {
+        LOG("error compiling SQL get-user-password statement: code %d\n", _err);
         return false;
     }
     sqlite3_bind_text(getUserPwdStmt, sqlite3_bind_parameter_index(getUserPwdStmt, "@user"), user, strlen(user), SQLITE_STATIC);
@@ -61,8 +62,9 @@ bool wellnessPost(ConnectionInfo* ci) {
     
     // Prepare SQL statement for inserting values
     sqlite3_stmt* insertStmt;
-    if (sqlite3_prepare_v2(db, _insertStmt, -1, &insertStmt, NULL) != SQLITE_OK) {
-        LOG("error compiling SQL insert statement\n");
+    printf("%s\n", _insertStmt);
+    if ((_err = sqlite3_prepare_v2(db, _insertStmt, -1, &insertStmt, NULL)) != SQLITE_OK) {
+        LOG("error compiling SQL insert statement: code %d\n", _err);
         return false;
     }
     // Parse query string
